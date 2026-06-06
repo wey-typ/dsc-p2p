@@ -15,6 +15,7 @@ import {
   type StartPayload,
   type PlayPayload,
   type CommunicatePayload,
+  type SetLevelPayload,
   type JoinAck,
 } from "@dsc/shared";
 import { RoomManager, type Room } from "./rooms.js";
@@ -209,6 +210,9 @@ export function createGameServer(
 
     socket.on(EV.RoomAddBot, () => hostAction(socket.id, (code) => rooms.addBot(code)));
     socket.on(EV.RoomRemoveBot, () => hostAction(socket.id, (code) => rooms.removeBot(code)));
+    socket.on(EV.RoomSetLevel, (payload: SetLevelPayload) =>
+      hostAction(socket.id, (code) => rooms.setLevel(code, payload?.level ?? 0))
+    );
 
     socket.on(EV.GameRestart, () => hostAction(socket.id, (code) => rooms.restart(code)));
     socket.on(EV.GameEnd, () => hostAction(socket.id, (code) => rooms.endGame(code)));

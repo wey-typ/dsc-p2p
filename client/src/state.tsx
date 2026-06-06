@@ -20,6 +20,7 @@ interface GameContextValue {
   startGame: (taskCount?: number) => void;
   addBot: () => void;
   removeBot: () => void;
+  setLevel: (level: number) => void;
   restart: () => void;
   pause: () => void;
   resume: () => void;
@@ -80,6 +81,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       startGame: (taskCount) => s().emit(EV.GameStart, { taskCount }),
       addBot: () => s().emit(EV.RoomAddBot, {}),
       removeBot: () => s().emit(EV.RoomRemoveBot, {}),
+      setLevel: (level) => s().emit(EV.RoomSetLevel, { level }),
       restart: () => {
         setView(null);
         s().emit(EV.GameRestart, {});

@@ -16,6 +16,7 @@ import {
   mulberry32,
   MIN_PLAYERS,
   MAX_PLAYERS,
+  MAX_LEVEL,
 } from "@dsc/shared";
 import { CampaignStore, slugify } from "./campaign.js";
 import type { HistoryStore } from "./history.js";
@@ -199,6 +200,16 @@ export class RoomManager {
   /** Alias kept for the client's "restart/back to lobby" control. */
   restart(code: string): { ok: true } | { error: string } {
     return this.endGame(code);
+  }
+
+  /** Choose which level to play next (lobby only). Clamped to 0..MAX_LEVEL. */
+  setLevel(code: string, level: number): { ok: true } | { error: string } {
+    const room = this.getRoom(code);
+    if (!room) return { error: "Room not found." };
+    if (room.phase !== "lobby") return { error: "Can only change level in the lobby." };
+    if (!Number.isFinite(level)) return { error: "Invalid level." };
+    room.level = Math.max(0, Math.min(MAX_LEVEL, Math.floor(level)));
+    return { ok: true };
   }
 
   pause(code: string): { ok: true } | { error: string } {

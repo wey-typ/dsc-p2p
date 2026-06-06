@@ -165,6 +165,28 @@ button { font-family: inherit; }
 .cb-name { font-weight: 800; color: var(--gold); }
 .cb-stats { font-size: 0.8rem; color: var(--foam-dim); }
 
+/* ---- Level picker (lobby) ---- */
+.level-picker { background: rgba(8,43,58,0.55); border: 1px solid rgba(169,205,217,0.15); border-radius: 12px; padding: 10px 12px; }
+.lp-row { display: flex; align-items: center; gap: 12px; justify-content: center; }
+.lp-center { text-align: center; min-width: 140px; }
+.lp-num { display: block; font-size: 0.7rem; color: var(--foam-dim); text-transform: uppercase; letter-spacing: 0.1em; }
+.lp-name { display: block; font-weight: 800; color: var(--gold); font-size: 1.1rem; }
+.lp-notes { margin: 8px 0 4px; padding-left: 18px; color: var(--foam-dim); font-size: 0.82rem; line-height: 1.5; }
+.lp-notes li { margin: 1px 0; }
+.level-picker .btn.link { display: block; margin: 0 auto; }
+
+/* ---- Level guide modal ---- */
+.guide-card { max-width: 460px; text-align: left; margin: auto; }
+.guide-card h2 { text-align: center; }
+.guide-list { list-style: none; padding: 0; margin: 8px 0 14px; display: flex; flex-direction: column; gap: 8px; }
+.guide-row { background: rgba(8,43,58,0.55); border: 1px solid rgba(169,205,217,0.12); border-radius: 10px; padding: 10px 12px; }
+.guide-row.pickable { cursor: pointer; }
+.guide-row.current { border-color: var(--gold); }
+.guide-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.guide-num { font-weight: 800; color: var(--gold); }
+.guide-tasks { font-size: 0.72rem; color: var(--foam-dim); margin-left: auto; }
+.guide-notes { margin: 6px 0 0; padding-left: 18px; color: var(--foam-dim); font-size: 0.8rem; line-height: 1.45; }
+
 /* ---- In-game control bar ---- */
 .game-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .game-mission { font-size: 0.78rem; color: var(--foam-dim); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

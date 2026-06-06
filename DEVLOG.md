@@ -658,3 +658,27 @@ static image due to data volume + phone viewability).
 
 ### Verification
 - `npm run build:client` OK; `npm test` → **86/86** (CSS-only, no logic change).
+
+---
+
+## Cycle 19 — Level selection + per-level guide
+**Date:** 2026-06-07
+
+### Planned (≤5 goals)
+1. Host can choose any level (not just the campaign pointer).
+2. Per-level guide showing each level's rules/restrictions.
+3. Live level display + restrictions for the chosen level in the lobby.
+4. Guide reachable from Home (read-only) and Lobby (pick a level).
+5. Tests.
+
+### Developed
+- `shared/protocol.ts` — `RoomSetLevel` event + `SetLevelPayload`; `MAX_LEVEL` (8).
+- `server/rooms.ts` — `setLevel` (lobby-only, clamped 0..MAX_LEVEL); `gameServer` handler
+  (host-only).
+- `client` — `state.setLevel`; Lobby **level picker** (−/+), shows mission name + the
+  level's ordering rules (`missionNotes`); `screens/LevelGuide.tsx` modal listing all
+  levels (name, task count, restrictions), pickable in lobby / read-only on Home.
+- Tests: `setLevel` clamp + start-at-chosen-level + lobby-only guard. **88 tests total.**
+
+### Verification
+- `npm test` → **88/88**; typecheck (both) clean; client builds.

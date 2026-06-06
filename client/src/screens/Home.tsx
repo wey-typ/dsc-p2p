@@ -4,6 +4,7 @@ import { Leaderboard } from "./Leaderboard";
 import { HowToPlay } from "./HowToPlay";
 import { History } from "./History";
 import { BotLab } from "./BotLab";
+import { LevelGuide } from "./LevelGuide";
 
 export function Home() {
   const { createRoom, joinRoom, connected } = useGame();
@@ -16,6 +17,7 @@ export function Home() {
   const [showHelp, setShowHelp] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showBotLab, setShowBotLab] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   const nameOk = name.trim().length > 0;
 
@@ -102,6 +104,9 @@ export function Home() {
         <button className="btn link" onClick={() => setShowHelp(true)}>
           🤿 How to play
         </button>
+        <button className="btn link" onClick={() => setShowGuide(true)}>
+          🗺️ Levels
+        </button>
         <button className="btn link" onClick={() => setShowBoard(true)}>
           🏅 Leaderboard
         </button>
@@ -117,6 +122,7 @@ export function Home() {
       {showHelp && <HowToPlay onClose={() => setShowHelp(false)} />}
       {showHistory && <History onClose={() => setShowHistory(false)} />}
       {showBotLab && <BotLab onClose={() => setShowBotLab(false)} />}
+      {showGuide && <LevelGuide onClose={() => setShowGuide(false)} />}
     </div>
   );
 }

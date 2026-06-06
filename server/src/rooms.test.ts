@@ -108,6 +108,29 @@ describe("RoomManager", () => {
     expect(["won", "lost"]).toContain(room.phase);
   });
 
+  it("lets the host choose a level (clamped) and starts that mission", () => {
+    const rm = new RoomManager(20);
+    const { room } = rm.createRoom("Host");
+    rm.joinRoom(room.code, "Two");
+    expect(rm.setLevel(room.code, 4)).toEqual({ ok: true });
+    expect(room.level).toBe(4);
+    expect(rm.setLevel(room.code, 999)).toEqual({ ok: true });
+    expect(room.level).toBe(8); // clamped to MAX_LEVEL
+    expect(rm.setLevel(room.code, -3)).toEqual({ ok: true });
+    expect(room.level).toBe(0);
+    rm.setLevel(room.code, 3);
+    rm.startGame(room.code); // no explicit taskCount -> uses level 3 mission
+    expect(room.mission?.id).toBe("mission-4"); // level 3 => "mission-4"
+  });
+
+  it("rejects changing level once the game has started", () => {
+    const rm = new RoomManager(21);
+    const { room } = rm.createRoom("Host");
+    rm.joinRoom(room.code, "Two");
+    rm.startGame(room.code, 2, 1);
+    expect(rm.setLevel(room.code, 2)).toEqual({ error: "Can only change level in the lobby." });
+  });
+
   it("won't add bots once the game has started", () => {
     const rm = new RoomManager(12);
     const { room } = rm.createRoom("Host");

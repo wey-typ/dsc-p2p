@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { useGame } from "../state";
+import { LevelGuide } from "./LevelGuide";
+import { missionName, missionNotes, MAX_LEVEL } from "@dsc/shared";
 
 export function Lobby() {
-  const { room, youId, startGame, addBot, removeBot, leave } = useGame();
+  const { room, youId, startGame, addBot, removeBot, setLevel, leave } = useGame();
+  const [showGuide, setShowGuide] = useState(false);
   if (!room) return null;
   const isHost = room.hostId === youId;
   const canStart = room.players.length >= room.minPlayers;
@@ -23,8 +27,45 @@ export function Lobby() {
       <div className="campaign-banner">
         <span className="cb-name">🚩 {room.campaignName}</span>
         <span className="cb-stats">
-          Mission {room.level + 1} · {room.cleared} cleared · {room.attempts} attempts
+          {room.cleared} cleared · {room.attempts} attempts
         </span>
+      </div>
+
+      <div className="level-picker">
+        <div className="lp-row">
+          {isHost && (
+            <button
+              className="btn chip"
+              disabled={room.level <= 0}
+              onClick={() => setLevel(room.level - 1)}
+              aria-label="Previous level"
+            >
+              −
+            </button>
+          )}
+          <div className="lp-center">
+            <span className="lp-num">Level {room.level + 1}</span>
+            <span className="lp-name">{missionName(room.level)}</span>
+          </div>
+          {isHost && (
+            <button
+              className="btn chip"
+              disabled={room.level >= MAX_LEVEL}
+              onClick={() => setLevel(room.level + 1)}
+              aria-label="Next level"
+            >
+              +
+            </button>
+          )}
+        </div>
+        <ul className="lp-notes">
+          {missionNotes(room.level).map((n, i) => (
+            <li key={i}>{n}</li>
+          ))}
+        </ul>
+        <button className="btn link" onClick={() => setShowGuide(true)}>
+          🗺️ Level guide
+        </button>
       </div>
 
       <h2>Crew ({room.players.length}/{room.maxPlayers})</h2>
@@ -63,6 +104,21 @@ export function Lobby() {
         </button>
       ) : (
         <p className="hint center">Waiting for the host to begin the dive…</p>
+      )}
+
+      {showGuide && (
+        <LevelGuide
+          currentLevel={room.level}
+          onClose={() => setShowGuide(false)}
+          onPick={
+            isHost
+              ? (lv) => {
+                  setLevel(lv);
+                  setShowGuide(false);
+                }
+              : undefined
+          }
+        />
       )}
     </div>
   );

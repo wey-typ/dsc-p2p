@@ -37,6 +37,7 @@ export const EV = {
   RoomLeave: "room:leave",
   RoomAddBot: "room:addbot",
   RoomRemoveBot: "room:removebot",
+  RoomSetLevel: "room:setlevel",
   GameStart: "game:start",
   GamePlay: "game:play",
   GameRestart: "game:restart",
@@ -63,6 +64,12 @@ export interface JoinPayload {
 export interface StartPayload {
   taskCount?: number;
 }
+export interface SetLevelPayload {
+  level: number;
+}
+
+/** Highest selectable named level (0-based). 9 named missions: levels 0..8. */
+export const MAX_LEVEL = 8;
 export interface PlayPayload {
   card: Card;
 }
