@@ -441,3 +441,19 @@ responsive UI, start/restart/pause/end, saved progression, leaderboard, consiste
 graphics + style guide) plus sonar, escalating constrained missions, and optional bots.
 Backlog (not required): distress signal, mid-game reconnect-by-id, lobby task selection,
 mission complications (comms-off), optional raster art.
+
+---
+
+## Post-release UX fixes
+**Date:** 2026-06-07
+
+- **LAN launch fix:** server now binds `0.0.0.0` and the startup banner filters out
+  VPN/virtual interfaces (utun/ipsec/etc.), showing only the real Wi-Fi address. (A user
+  couldn't connect because the banner advertised a VPN IP phones can't reach; a stray `*/`
+  in a comment had also broken the build.)
+- **"Tricks go by too fast":** the engine now records the completed trick
+  (`lastTrick` + `lastTrickWinner`); the client shows a persistent **Last trick** panel
+  (every player's card + 🏆 winner) so you can always see what just happened.
+- **"I don't understand the gameplay":** added an in-game **? Help** button (opens
+  how-to-play during a match) and a plain-language "in one breath" summary at the top of
+  the rules. **68 tests pass.**
