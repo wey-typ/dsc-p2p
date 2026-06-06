@@ -605,3 +605,35 @@ static image due to data volume + phone viewability).
 ### Verification
 - `npm test` → **82/82**; typecheck clean; `npm run bot-report` writes the report;
   `GET /bot-report` → 200, 75 KB, 45 games / 534 trick chips / 42 fail reasons.
+
+---
+
+## Cycle 17 — Best-move advisor ("cheat" hint)
+**Date:** 2026-06-07
+
+### Planned (≤5 goals)
+1. `suggestPlay(view)` — recommend the best card + plain-English reason (uses only the
+   player's legitimate knowledge, mirroring the bot's strategy).
+2. Reasons for win / duck / deliver / safe situations.
+3. In-game "💡 Hint" button (your turn only).
+4. Highlight the suggested card + show the reason banner.
+5. Tests.
+
+### Developed
+- `shared/advisor.ts` — `suggestPlay(view): {card, reason}` + `cardName`; explains WIN
+  ("capture your task X"), DUCK ("don't take it — it's Bob's task / not your turn in order"),
+  DELIVER ("lead X so its owner can grab it"), and SAFE ("play cheapest, hold trumps").
+- `client/screens/Game.tsx` — "💡 Hint" button, reason banner (tap to dismiss), suggested
+  card highlighted; **also fixed a pre-existing React hooks-rules bug** (hooks were after an
+  early return) by hoisting all hooks above the guard.
+- Tests: `shared/advisor.test.ts` — legal+reasoned suggestion, declines off-turn, always
+  legal across 30 states, card-name formatting. **86 tests total.**
+
+### Issues found
+- Initial test asserted the advisor == bot exactly; not a real invariant (advisor always
+  picks the cheapest winner; bot may pick the strongest when not last). Replaced with a
+  "suggestion is always legal across many states" check.
+- Hooks-after-early-return latent bug found & fixed while adding the hint hook.
+
+### Verification
+- `npm test` → **86/86**; typecheck (both) clean; client builds.

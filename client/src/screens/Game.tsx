@@ -1,8 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGame } from "../state";
 import { CardView } from "../components/CardView";
 import { HowToPlay } from "./HowToPlay";
-import { sonarPosition, type Card, type TaskState, type Communication } from "@dsc/shared";
+import {
+  sonarPosition,
+  suggestPlay,
+  type Card,
+  type TaskState,
+  type Communication,
+  type Suggestion,
+} from "@dsc/shared";
 
 function sameCard(a: Card, b: Card) {
   return a.suit === b.suit && a.value === b.value;
@@ -25,10 +32,17 @@ function constraintLabel(t: TaskState): string | null {
 
 export function Game() {
   const { view, room, play, communicate, startGame, endGame, pause, resume, leave, youId } = useGame();
-  if (!view || !room) return null;
-
+  // All hooks must run unconditionally (before any early return).
   const [sonarMode, setSonarMode] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [hint, setHint] = useState<Suggestion | null>(null);
+
+  // Clear a shown hint whenever the table state advances (turn or trick changes).
+  useEffect(() => {
+    setHint(null);
+  }, [view?.turn, view?.trick.plays.length, view?.phase]);
+
+  if (!view || !room) return null;
 
   const paused = room.paused && view.phase === "playing";
   const yourTurn = view.turn === view.youSeat && view.phase === "playing" && !paused;
@@ -62,6 +76,11 @@ export function Game() {
           {room.campaignName} · Mission {room.level + 1}
         </span>
         <span className="game-controls">
+          {yourTurn && (
+            <button className="btn chip gold" onClick={() => setHint(suggestPlay(view))}>
+              💡 Hint
+            </button>
+          )}
           <button className="btn chip" onClick={() => setShowHelp(true)} aria-label="How to play">
             ? Help
           </button>
@@ -164,6 +183,13 @@ export function Game() {
         </div>
       )}
 
+      {/* Hint banner (cheat advisor) */}
+      {hint && hint.reason && (
+        <div className="hint-banner" onClick={() => setHint(null)}>
+          💡 {hint.reason}
+        </div>
+      )}
+
       {/* Turn banner */}
       <div className={`turn-banner ${yourTurn ? "your-turn" : ""}`}>
         {view.phase !== "playing"
@@ -197,13 +223,14 @@ export function Game() {
           {view.hand.map((card) => {
             const sonarOk = sonarMode && sonarPosition(view.hand, card) !== null;
             const playOk = !sonarMode && yourTurn && legal(card);
+            const hinted = !sonarMode && hint?.card != null && sameCard(hint.card, card);
             return (
               <CardView
                 key={`${card.suit}-${card.value}`}
                 card={card}
                 onClick={sonarOk || playOk ? () => onCardTap(card) : undefined}
                 disabled={sonarMode ? !sonarOk : view.phase !== "playing" || !yourTurn || !legal(card)}
-                selected={sonarOk}
+                selected={sonarOk || hinted}
               />
             );
           })}

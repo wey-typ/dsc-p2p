@@ -172,6 +172,13 @@ button { font-family: inherit; }
 .btn.chip { padding: 7px 11px; min-height: 0; font-size: 0.8rem; background: rgba(233,246,251,0.1); color: var(--foam); border: 1px solid rgba(169,205,217,0.3); border-radius: 999px; }
 .btn.chip.danger { background: rgba(231,88,91,0.18); border-color: var(--danger); }
 .overlay.paused .overlay-card { border-color: var(--gold); }
+.btn.chip.gold { background: rgba(242,193,78,0.18); border-color: var(--gold); color: var(--gold); }
+.hint-banner {
+  background: rgba(242, 193, 78, 0.14);
+  border: 1px solid rgba(242, 193, 78, 0.45);
+  border-radius: 12px; padding: 10px 12px; font-size: 0.85rem; line-height: 1.45;
+  cursor: pointer;
+}
 
 /* ============================================================
    Cards
