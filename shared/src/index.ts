@@ -11,3 +11,4 @@ export * from "./protocol.js";
 export * from "./leaderboard.js";
 export * from "./bots.js";
 export * from "./history.js";
+export * from "./training.js";

@@ -7,6 +7,8 @@ import {
   EV,
   projectForSeat,
   rankLeaderboard,
+  trainWeights,
+  type EvalOptions,
   type CreatePayload,
   type JoinPayload,
   type StartPayload,
@@ -17,6 +19,7 @@ import {
 import { RoomManager, type Room } from "./rooms.js";
 import { CampaignStore } from "./campaign.js";
 import { HistoryStore } from "./history.js";
+import { BotLab } from "./botlab.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -26,17 +29,20 @@ export interface GameServer {
   rooms: RoomManager;
   store: CampaignStore | null;
   history: HistoryStore | null;
+  botLab: BotLab | null;
 }
 
 /** Build the HTTP + Socket.IO server with all room/game handlers wired up. */
 export function createGameServer(
   seed?: number,
   store?: CampaignStore | null,
-  history?: HistoryStore | null
+  history?: HistoryStore | null,
+  botLab?: BotLab | null
 ): GameServer {
   // `undefined` => default disk store; `null` => no persistence (tests).
   const campaignStore = store === undefined ? new CampaignStore() : store;
   const historyStore = history === undefined ? new HistoryStore() : history;
+  const lab = botLab === undefined ? new BotLab() : botLab;
 
   const app = express();
   const clientDist = path.resolve(__dirname, "../../client/dist");
@@ -54,10 +60,50 @@ export function createGameServer(
     if (!rec) return res.status(404).json({ error: "Not found" });
     res.json(rec);
   });
+  app.get("/api/bot-stats", (_req, res) => {
+    res.json(lab ? lab.stats() : { weights: null, totalRuns: 0, bestWinRate: 0, latestWinRate: null, recent: [] });
+  });
 
   const httpServer = createServer(app);
   const io = new Server(httpServer, { cors: { origin: "*" } });
-  const rooms = new RoomManager(seed, campaignStore, historyStore);
+  const rooms = new RoomManager(
+    seed,
+    campaignStore,
+    historyStore,
+    lab ? () => lab.current() : undefined
+  );
+
+  // --- "Get better after each play": a small guarded self-play training step that runs
+  // in the background whenever a game involving bots finishes. ---
+  let autoTraining = false;
+  let lastAutoTrainAt = 0;
+  function maybeAutoTrain(room: Room): void {
+    if (!lab || room.phase === "playing" || room.paused) return;
+    if (!room.players.some((p) => p.isBot)) return;
+    const now = Date.now();
+    if (autoTraining || now - lastAutoTrainAt < 1500) return;
+    autoTraining = true;
+    lastAutoTrainAt = now;
+    setTimeout(() => {
+      try {
+        const fast: EvalOptions = { players: [3], levels: [0, 1], gamesPerCell: 8, seedBase: now & 0xffff };
+        const res = trainWeights(lab.current(), 3, fast, now & 0xffffffff);
+        if (res.bestWinRate >= res.startWinRate) lab.setWeights(res.best);
+        lab.appendRun({
+          at: Date.now(),
+          source: "auto",
+          generations: 3,
+          startWinRate: res.startWinRate,
+          bestWinRate: res.bestWinRate,
+          weights: lab.current(),
+        });
+      } catch {
+        /* training is best-effort; never crash a game */
+      } finally {
+        autoTraining = false;
+      }
+    }, 50);
+  }
 
   /** socket.id -> { code, playerId } for routing plays and cleanup. */
   const membership = new Map<string, { code: string; playerId: string }>();
@@ -102,7 +148,10 @@ export function createGameServer(
     setTimeout(() => {
       if (rooms.playBotTurn(code)) {
         const room = rooms.getRoom(code);
-        if (room) broadcastRoom(room);
+        if (room) {
+          broadcastRoom(room);
+          maybeAutoTrain(room);
+        }
         scheduleBots(code); // chain to the next bot turn, if any
       }
     }, 700);
@@ -161,7 +210,10 @@ export function createGameServer(
       const res = rooms.play(m.code, m.playerId, payload.card);
       if ("error" in res) return socket.emit(EV.ErrorMsg, { message: res.error });
       const room = rooms.getRoom(m.code);
-      if (room) broadcastRoom(room);
+      if (room) {
+        broadcastRoom(room);
+        maybeAutoTrain(room);
+      }
       scheduleBots(m.code); // next seat may be a bot
     });
 
@@ -178,5 +230,5 @@ export function createGameServer(
     socket.on("disconnect", () => handleLeave(socket.id));
   });
 
-  return { httpServer, io, rooms, store: campaignStore, history: historyStore };
+  return { httpServer, io, rooms, store: campaignStore, history: historyStore, botLab: lab };
 }

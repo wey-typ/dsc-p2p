@@ -74,7 +74,7 @@ describe("GET /api/history endpoints", () => {
   let url: string;
   beforeEach(async () => {
     store.save(REC);
-    server = createGameServer(1, null, store);
+    server = createGameServer(1, null, store, null);
     await new Promise<void>((r) => server.httpServer.listen(0, r));
     url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
   });

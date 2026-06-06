@@ -13,7 +13,7 @@ let server: GameServer;
 let url: string;
 
 beforeAll(async () => {
-  server = createGameServer(99, null, null);
+  server = createGameServer(99, null, null, null);
   await new Promise<void>((resolve) => server.httpServer.listen(0, resolve));
   const port = (server.httpServer.address() as AddressInfo).port;
   url = `http://localhost:${port}`;

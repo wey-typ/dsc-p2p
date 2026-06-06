@@ -528,3 +528,41 @@ reactive bot can't do; the smart bot at least never self-destructs on ordering a
 
 ### Verification
 - `npm test` → **74/74**; typecheck clean; measured 3–9× win-rate gain on easy missions.
+
+---
+
+## Cycle 15 — Bot training + results over time
+**Date:** 2026-06-07
+
+### Planned (≤5 goals)
+1. `shared/training.ts` — self-play `evaluateWeights` + hill-climbing `trainWeights` (seeded).
+2. `server/botlab.ts` — persist tuned weights + a training-run log.
+3. `npm run train-bots [gens]` CLI.
+4. Live bots load tuned weights (improve after training / after each play).
+5. `GET /api/bot-stats` + client "Bot Lab" view (win-rate over time). Tests.
+
+### Developed
+- `shared/training.ts` — `playBotGame`, `evaluateWeights` (deterministic suite),
+  `trainWeights` (mutate→evaluate→keep-best, annealed step, per-generation log).
+- `server/botlab.ts` — `BotLab` (weights.json + runs.json, in-memory cache, `stats()`).
+- `server/train.ts` + `train-bots` npm script.
+- `server/rooms.ts` — `weightsProvider` injected; `playBotTurn` uses tuned weights.
+- `server/gameServer.ts` — BotLab wired; `/api/bot-stats`; **guarded background auto-train
+  after each finished bot game** ("better after each play", 3 gens, fast suite, never
+  overlaps, best-effort).
+- `client/screens/BotLab.tsx` — KPIs (current/best/runs), win-rate bar chart over runs,
+  current weights; Home "🤖 Bot Lab" button.
+- Tests: `shared/training.test.ts` (determinism, no-regress, reproducible) +
+  `server/botlab.test.ts` (persist/reload, runs/stats). **79 tests total.**
+
+### Measured
+- `npm run train-bots 25` → win rate **19.4% → 22.2%** (saved + logged). Honest, modest:
+  weights tune tie-breaking only; the big strategic gains came in Cycle 14.
+
+### Issues found
+- `data/` runtime dirs (bot/history) weren't fully gitignored → broadened `.gitignore` to
+  ignore all of `data/`.
+
+### Verification
+- `npm test` → **79/79**; typecheck (both) clean; client builds; `/api/bot-stats` serves
+  trained weights + run log; trainer CLI verified end-to-end.

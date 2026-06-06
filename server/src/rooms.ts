@@ -9,6 +9,8 @@ import {
   playCard,
   communicate,
   chooseBotPlay,
+  type BotWeights,
+  DEFAULT_WEIGHTS,
   buildSimpleMission,
   buildMissionForLevel,
   mulberry32,
@@ -55,11 +57,18 @@ export class RoomManager {
   private rng: () => number;
   private store: CampaignStore | null;
   private history: HistoryStore | null;
+  private weightsProvider: () => BotWeights;
 
-  constructor(seed?: number, store?: CampaignStore | null, history?: HistoryStore | null) {
+  constructor(
+    seed?: number,
+    store?: CampaignStore | null,
+    history?: HistoryStore | null,
+    weightsProvider?: () => BotWeights
+  ) {
     this.rng = mulberry32(seed ?? 0x9e3779b9);
     this.store = store === undefined ? new CampaignStore() : store;
     this.history = history ?? null;
+    this.weightsProvider = weightsProvider ?? (() => DEFAULT_WEIGHTS);
   }
 
   private now(): number {
@@ -298,7 +307,7 @@ export class RoomManager {
     const room = this.getRoom(code);
     if (!room || !room.game || !this.isBotTurn(code)) return false;
     const seat = room.game.turn;
-    const card = chooseBotPlay(room.game, seat);
+    const card = chooseBotPlay(room.game, seat, this.weightsProvider());
     const player = room.players.find((p) => p.seat === seat)!;
     const res = this.play(code, player.id, card);
     return "ok" in res;
