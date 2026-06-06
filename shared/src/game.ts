@@ -44,6 +44,11 @@ export interface GameState {
   communications: Communication[];
   /** Whether each seat has spent its single sonar token. */
   sonarUsed: boolean[];
+  /**
+   * How many cards the current trick will hold = seats that had cards when the trick
+   * began. Lets the final tricks of an uneven (3-player) deal resolve with fewer cards.
+   */
+  expectedTrickSize: number;
 }
 
 /**
@@ -75,7 +80,23 @@ export function createGame(
     phase: "playing",
     communications: [],
     sonarUsed: new Array(players.length).fill(false),
+    expectedTrickSize: countSeatsWithCards(hands),
   };
+}
+
+/** Number of seats that currently hold at least one card. */
+function countSeatsWithCards(hands: readonly Card[][]): number {
+  return hands.reduce((n, h) => n + (h.length > 0 ? 1 : 0), 0);
+}
+
+/** Next seat (cyclic, starting after `from`) that still holds cards, or `from` if none. */
+function nextSeatWithCards(hands: readonly Card[][], from: number): number {
+  const n = hands.length;
+  for (let step = 1; step <= n; step++) {
+    const seat = (from + step) % n;
+    if ((hands[seat]?.length ?? 0) > 0) return seat;
+  }
+  return from;
 }
 
 /** Whether `seat` may make a sonar signal right now (token unspent, between tricks). */
@@ -136,9 +157,9 @@ export function playCard(state: GameState, seat: number, card: Card): GameState 
   next.hands[seat] = removeCard(next.hands[seat]!, card);
   next.trick = { ...next.trick, plays: [...next.trick.plays, { seat, card }] };
 
-  // Trick still in progress: advance to next seat.
-  if (next.trick.plays.length < next.players.length) {
-    next.turn = (seat + 1) % next.players.length;
+  // Trick still in progress: advance to the next seat that still holds cards.
+  if (next.trick.plays.length < next.expectedTrickSize) {
+    next.turn = nextSeatWithCards(next.hands, seat);
     return next;
   }
 
@@ -189,13 +210,7 @@ function resolveCompletedTrick(state: GameState): GameState {
     return fail(s, `Task impossible: absolute-order task ${cardId(stranded.card)} missed its slot.`);
   }
 
-  // Reset trick; winner leads next.
-  s = {
-    ...s,
-    trick: { leader: winner, plays: [] },
-    turn: winner,
-    trickNumber: trickNo,
-  };
+  s = { ...s, trickNumber: trickNo };
 
   // Win when every task is done.
   if (s.tasks.every((t) => t.status === "done")) {
@@ -203,12 +218,19 @@ function resolveCompletedTrick(state: GameState): GameState {
   }
 
   // Ran out of cards with tasks still pending -> fail.
-  const cardsLeft = s.hands.some((h) => h.length > 0);
-  if (!cardsLeft) {
+  if (countSeatsWithCards(s.hands) === 0) {
     return fail(s, "Out of cards: not all tasks were completed.");
   }
 
-  return s;
+  // Set up the next trick. The winner leads if they still hold cards, otherwise the
+  // next seat that does. expectedTrickSize shrinks as seats run out (uneven deals).
+  const leader = (s.hands[winner]?.length ?? 0) > 0 ? winner : nextSeatWithCards(s.hands, winner);
+  return {
+    ...s,
+    trick: { leader, plays: [] },
+    turn: leader,
+    expectedTrickSize: countSeatsWithCards(s.hands),
+  };
 }
 
 /** Returns a failure reason string if completing `task` as the `idx`-th task is illegal. */

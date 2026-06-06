@@ -358,3 +358,48 @@ of truth. Image generation noted as optional backlog.)
 - QA audit: address dev-toolchain npm-audit advisories (vitest v4 bump), responsiveness
   review, edge-case hardening (reconnect/disconnect mid-game, host leaves), final bug
   sweep + README run/handover instructions.
+
+---
+
+## Cycle 10 — QA, hardening & security
+**Date:** 2026-06-06
+
+### Planned (≤5 goals)
+1. Host reassignment when the host disconnects.
+2. Show disconnected crew in-game.
+3. Robustness test: drive generated (constrained) missions to terminal across counts/levels.
+4. Finalize README for handover.
+5. Clear the deferred npm-audit critical (vitest upgrade), revert if it breaks.
+
+### Developed
+- `server/rooms.ts` — `disconnect()` now hands off `hostId` to the first connected player
+  (controls never get stuck) and still deletes empty rooms.
+- `client` — player chips show ⚠ + dashed/dim style for disconnected seats.
+- `shared/playthrough.test.ts` — greedy auto-play of generated missions for 2–5 players ×
+  levels 0–8 × 5 seeds (100 games) asserting they always reach won/lost with no
+  stall/throw, plus a check that some random games are winnable.
+- `README.md` — full host/play instructions, gameplay summary, architecture, dev commands,
+  Node setup, known limitations/backlog.
+- Upgraded **vitest 2 → 4.1.8**.
+
+### Issues found
+1. **CRITICAL BUG (FIXED): 3-player endgame stall.** The 3-player deal is uneven
+   (14/13/13); the engine assumed every trick has `numPlayers` cards, so the final
+   trick(s) stalled when the turn reached an empty-handed seat — every full-length
+   3-player game would hang. The robustness test surfaced it. **Fix:** added
+   `expectedTrickSize` (seats holding cards at trick start), `nextSeatWithCards` /
+   `countSeatsWithCards`; `playCard` advances skipping empty seats; tricks resolve at the
+   reduced size; next leader is the winner or next card-holder. Verified by 100 auto
+   playthroughs.
+2. npm-audit critical (Vitest UI) cleared by the v4 bump (5 vulns → 2 moderate). Remaining
+   two are **vite/esbuild dev-server only** (used solely by `npm run dev:client`, never in
+   production); leaving them rather than risk a Vite major bump. Documented.
+3. No mid-game reconnect (documented limitation + mitigations: host End/re-deal, host
+   auto-transfer).
+
+### Verification
+- `npm test` → **63/63 passing** (incl. 100-game robustness sweep + over-the-wire game).
+  typecheck (both) clean. client builds. `npm audit` → 0 critical.
+
+### Next steps (Cycle 11, optional "plus")
+- AI/bot crewmates (engine is already bot-agnostic) to fill seats / enable solo testing.

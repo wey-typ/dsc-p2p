@@ -35,6 +35,7 @@ function makeState(hands: Card[][], tasks: TaskState[], leader = 0): GameState {
     phase: "playing",
     communications: [],
     sonarUsed: new Array(hands.length).fill(false),
+    expectedTrickSize: hands.filter((h) => h.length > 0).length,
   };
 }
 

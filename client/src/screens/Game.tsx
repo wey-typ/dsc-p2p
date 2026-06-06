@@ -35,6 +35,8 @@ export function Game() {
   const nameOf = (seat: number) => view.players[seat]?.name ?? `Seat ${seat}`;
   const signalFor = (seat: number): Communication | undefined =>
     view.communications.find((c) => c.seat === seat);
+  const isOffline = (seat: number): boolean =>
+    room.players.find((p) => p.seat === seat)?.connected === false;
 
   const canSonar = view.youCanCommunicate && !paused;
   if (sonarMode && !canSonar) setSonarMode(false);
@@ -78,9 +80,10 @@ export function Game() {
               "player-chip",
               view.turn === p.seat ? "active" : "",
               p.seat === view.youSeat ? "self" : "",
+              isOffline(p.seat) ? "offline" : "",
             ].join(" ")}
           >
-            <span className="pc-name">{p.name}</span>
+            <span className="pc-name">{isOffline(p.seat) ? "⚠ " : ""}{p.name}</span>
             <span className="pc-meta">
               {p.seat === view.commander ? "⚓ " : ""}
               {view.handCounts[p.seat]} cards

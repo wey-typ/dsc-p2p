@@ -222,6 +222,7 @@ button { font-family: inherit; }
   border-radius: 12px; padding: 8px 10px;
 }
 .player-chip.active { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(242,193,78,0.35); }
+.player-chip.offline { opacity: 0.5; border-style: dashed; }
 .player-chip.self .pc-name { color: var(--gold); }
 .pc-name { display: block; font-weight: 700; font-size: 0.9rem; white-space: nowrap; }
 .pc-meta { display: block; font-size: 0.72rem; color: var(--foam-dim); }

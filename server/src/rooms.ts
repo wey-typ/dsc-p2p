@@ -133,6 +133,13 @@ export class RoomManager {
     if (p) p.connected = false;
     if (room.players.every((x) => !x.connected)) {
       this.rooms.delete(room.code);
+      return;
+    }
+    // If the host dropped, hand the host role to the first still-connected player so
+    // game controls (pause/end/start) never get stuck.
+    if (room.hostId === playerId) {
+      const next = room.players.find((x) => x.connected);
+      if (next) room.hostId = next.id;
     }
   }
 

@@ -79,6 +79,17 @@ describe("RoomManager", () => {
     rm.disconnect(room.code, player.id);
     expect(rm.getRoom(room.code)).toBeUndefined();
   });
+
+  it("reassigns the host when the host disconnects", () => {
+    const rm = new RoomManager(9);
+    const { room, player } = rm.createRoom("Host");
+    const j = rm.joinRoom(room.code, "Two");
+    const twoId = "player" in j ? j.player.id : "";
+    expect(room.hostId).toBe(player.id);
+    rm.disconnect(room.code, player.id);
+    expect(rm.getRoom(room.code)).toBeDefined(); // not deleted (Two still connected)
+    expect(room.hostId).toBe(twoId); // host handed off
+  });
 });
 
 describe("sanitizeName", () => {
