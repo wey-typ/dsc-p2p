@@ -287,3 +287,39 @@ Format per cycle: **Planned / Developed / Issues found / Next steps**.
 - Curated mission set: a sequence with rising task counts AND ordering constraints
   (relative/absolute/last) so difficulty actually escalates; level setup/reset uses it.
 - (Backlog) distress signal; per-player task selection in lobby.
+
+---
+
+## Cycle 8 — Mission set + escalating constraints
+**Date:** 2026-06-06
+
+### Planned (≤5 goals)
+1. `buildMissionForLevel(numPlayers, level, rng)` with banded difficulty.
+2. Mission flavour (`missionName`) + `missionNotes` + `missionTaskCount`.
+3. Wire into `startGame` (explicit taskCount still forces a simple mission for tests).
+4. Keep constraint sets jointly satisfiable.
+5. Tests for structural validity + bands.
+
+### Developed
+- `shared/missions.ts` — `buildMissionForLevel` with bands: 0–1 none · 2–3 one `last` ·
+  4–5 relative chain on non-last + `last` · 6+ adds absolute-#1 pin. `missionName`
+  (Shallow Reef → Hadal Depths), `missionNotes` (UI rules text), `missionTaskCount`.
+- `server/rooms.ts` — `startGame` uses `buildMissionForLevel` for real play; explicit
+  `taskCount` path retained for deterministic tests/quick games.
+- Tests: `shared/missions.test.ts` — **4 tests** (count scaling/cap; distinct colour-card
+  targets + in-range owners; constraints appear per band; ordering internally consistent —
+  one `last`, absolute never collides with the last slot, relative strictly increasing).
+
+### Issues found
+- Test initially asserted relative orders are contiguous `1..k`; at level 6+ slot 1 is
+  taken by the absolute pin so relative orders run `2..k`. **Fixed** the assertion to the
+  true invariant (distinct + strictly increasing). The generator itself was correct.
+- The client already renders per-task constraint labels (▸ order N / ① #N / Ω last), so
+  the new rules surface with no client change.
+
+### Verification
+- `npm test` → **60/60 passing**. typecheck clean. client rebuilt.
+
+### Next steps (Cycle 9)
+- Theme & graphics polish pass (palette/typography/component consistency); a short style
+  guide; verify responsiveness across phone widths.

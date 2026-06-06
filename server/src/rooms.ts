@@ -9,6 +9,7 @@ import {
   playCard,
   communicate,
   buildSimpleMission,
+  buildMissionForLevel,
   mulberry32,
   MIN_PLAYERS,
   MAX_PLAYERS,
@@ -144,8 +145,12 @@ export class RoomManager {
     }
     const n = room.players.length;
     const rng = mulberry32(seed ?? Math.floor(this.rng() * 1e9));
-    const count = taskCount ?? taskCountForLevel(room.level);
-    const mission = buildSimpleMission(n, count, rng, `mission-${room.level + 1}`);
+    // An explicit taskCount forces a simple unordered mission (used by tests / quick play);
+    // otherwise build the curated, constraint-bearing mission for the current level.
+    const mission =
+      taskCount !== undefined
+        ? buildSimpleMission(n, taskCount, rng, `mission-${room.level + 1}`)
+        : buildMissionForLevel(n, room.level, rng);
     const enginePlayers: Player[] = room.players.map((p) => ({
       id: p.id,
       name: p.name,
