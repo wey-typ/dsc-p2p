@@ -327,6 +327,23 @@ button { font-family: inherit; }
 .legend-item { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 0.7rem; color: var(--foam-dim); }
 .home-links { display: flex; gap: 18px; justify-content: center; }
 
+/* ---- History ---- */
+.history-card { max-width: 460px; text-align: left; margin: auto; }
+.history-card h2 { text-align: center; }
+.hist-list { list-style: none; padding: 0; margin: 8px 0 16px; display: flex; flex-direction: column; gap: 8px; }
+.hist-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; cursor: pointer; background: rgba(8,43,58,0.6); border: 1px solid rgba(169,205,217,0.15); }
+.hist-row.won { border-left: 4px solid var(--ok); }
+.hist-row.lost { border-left: 4px solid var(--danger); }
+.hist-badge { font-size: 0.6rem; font-weight: 800; padding: 3px 6px; border-radius: 6px; }
+.hist-badge.won { background: rgba(79,209,165,0.2); color: var(--ok); }
+.hist-badge.lost { background: rgba(231,88,91,0.2); color: var(--danger); }
+.hist-main { flex: 1; display: flex; flex-direction: column; }
+.hist-main small { color: var(--foam-dim); font-size: 0.72rem; }
+.hist-arrow { color: var(--foam-dim); font-size: 1.2rem; }
+.review-nav { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+h2.won { color: var(--ok); }
+h2.lost { color: var(--danger); }
+
 /* ---- Toast ---- */
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);

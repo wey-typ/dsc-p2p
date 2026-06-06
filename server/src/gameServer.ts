@@ -16,6 +16,7 @@ import {
 } from "@dsc/shared";
 import { RoomManager, type Room } from "./rooms.js";
 import { CampaignStore } from "./campaign.js";
+import { HistoryStore } from "./history.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -24,12 +25,18 @@ export interface GameServer {
   io: Server;
   rooms: RoomManager;
   store: CampaignStore | null;
+  history: HistoryStore | null;
 }
 
 /** Build the HTTP + Socket.IO server with all room/game handlers wired up. */
-export function createGameServer(seed?: number, store?: CampaignStore | null): GameServer {
+export function createGameServer(
+  seed?: number,
+  store?: CampaignStore | null,
+  history?: HistoryStore | null
+): GameServer {
   // `undefined` => default disk store; `null` => no persistence (tests).
   const campaignStore = store === undefined ? new CampaignStore() : store;
+  const historyStore = history === undefined ? new HistoryStore() : history;
 
   const app = express();
   const clientDist = path.resolve(__dirname, "../../client/dist");
@@ -39,10 +46,18 @@ export function createGameServer(seed?: number, store?: CampaignStore | null): G
     const records = campaignStore ? campaignStore.list() : [];
     res.json(rankLeaderboard(records));
   });
+  app.get("/api/history", (_req, res) => {
+    res.json(historyStore ? historyStore.listSummaries() : []);
+  });
+  app.get("/api/history/:id", (req, res) => {
+    const rec = historyStore?.get(req.params.id);
+    if (!rec) return res.status(404).json({ error: "Not found" });
+    res.json(rec);
+  });
 
   const httpServer = createServer(app);
   const io = new Server(httpServer, { cors: { origin: "*" } });
-  const rooms = new RoomManager(seed, campaignStore);
+  const rooms = new RoomManager(seed, campaignStore, historyStore);
 
   /** socket.id -> { code, playerId } for routing plays and cleanup. */
   const membership = new Map<string, { code: string; playerId: string }>();
@@ -163,5 +178,5 @@ export function createGameServer(seed?: number, store?: CampaignStore | null): G
     socket.on("disconnect", () => handleLeave(socket.id));
   });
 
-  return { httpServer, io, rooms, store: campaignStore };
+  return { httpServer, io, rooms, store: campaignStore, history: historyStore };
 }

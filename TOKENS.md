@@ -34,3 +34,4 @@ Each new cycle appends a row with an estimate + a one-line basis. (Cycles 12+ be
 | Cycle | Focus | Est. tokens | Basis |
 |---|---:|---:|---|
 | 12 | Token tracking doc | ~4k | one doc |
+| 13 | Gameplay history / replay | ~32k | engine + store + API + History UI + tests |

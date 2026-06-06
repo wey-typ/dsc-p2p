@@ -15,7 +15,9 @@ import {
   MIN_PLAYERS,
   MAX_PLAYERS,
 } from "@dsc/shared";
-import { CampaignStore } from "./campaign.js";
+import { CampaignStore, slugify } from "./campaign.js";
+import type { HistoryStore } from "./history.js";
+import type { GameRecord } from "@dsc/shared";
 
 export interface RoomPlayer {
   id: string;
@@ -52,10 +54,12 @@ export class RoomManager {
   private rooms = new Map<string, Room>();
   private rng: () => number;
   private store: CampaignStore | null;
+  private history: HistoryStore | null;
 
-  constructor(seed?: number, store?: CampaignStore | null) {
+  constructor(seed?: number, store?: CampaignStore | null, history?: HistoryStore | null) {
     this.rng = mulberry32(seed ?? 0x9e3779b9);
     this.store = store === undefined ? new CampaignStore() : store;
+    this.history = history ?? null;
   }
 
   private now(): number {
@@ -216,17 +220,39 @@ export class RoomManager {
     } catch (e) {
       return { error: e instanceof Error ? e.message : "Illegal move." };
     }
-    // On transition to a terminal state, update + persist campaign progress.
+    // On transition to a terminal state, update + persist campaign progress + history.
     if (wasPlaying && room.game.phase !== "playing") {
-      if (room.game.phase === "won") {
+      const playedLevel = room.level; // mission level that was just played
+      const outcome = room.game.phase;
+      if (outcome === "won") {
         room.cleared += 1;
         room.level += 1;
       } else {
         room.attempts += 1;
       }
       this.persist(room);
+      this.recordHistory(room, playedLevel, outcome);
     }
     return { ok: true };
+  }
+
+  private recordHistory(room: Room, playedLevel: number, outcome: "won" | "lost"): void {
+    if (!this.history || !room.game) return;
+    const finishedAt = this.now();
+    const rec: GameRecord = {
+      id: `${slugify(room.campaignName)}-${finishedAt}`,
+      finishedAt,
+      crewName: room.campaignName,
+      missionName: room.mission?.name ?? `Mission ${playedLevel + 1}`,
+      level: playedLevel,
+      outcome,
+      failReason: room.game.failReason,
+      players: room.players.map((p) => ({ seat: p.seat, name: p.name, isBot: p.isBot })),
+      tricks: room.game.resolvedTricks ?? [],
+      tasks: room.game.tasks,
+      communications: room.game.communications,
+    };
+    this.history.save(rec);
   }
 
   private static BOT_NAMES = ["Marlin", "Coral", "Finn", "Nessie", "Bubbles", "Kraken"];

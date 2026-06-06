@@ -16,7 +16,7 @@ beforeAll(async () => {
   const store = new CampaignStore(dir);
   store.save({ id: "reef", name: "Reef Riders", level: 5, cleared: 5, attempts: 2, updatedAt: 0 });
   store.save({ id: "kelp", name: "Kelp Crew", level: 2, cleared: 2, attempts: 6, updatedAt: 0 });
-  server = createGameServer(1, store);
+  server = createGameServer(1, store, null);
   await new Promise<void>((r) => server.httpServer.listen(0, r));
   url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
 });

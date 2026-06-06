@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useGame } from "../state";
 import { Leaderboard } from "./Leaderboard";
 import { HowToPlay } from "./HowToPlay";
+import { History } from "./History";
 
 export function Home() {
   const { createRoom, joinRoom, connected } = useGame();
@@ -12,6 +13,7 @@ export function Home() {
   const [busy, setBusy] = useState(false);
   const [showBoard, setShowBoard] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const nameOk = name.trim().length > 0;
 
@@ -101,10 +103,14 @@ export function Home() {
         <button className="btn link" onClick={() => setShowBoard(true)}>
           🏅 Leaderboard
         </button>
+        <button className="btn link" onClick={() => setShowHistory(true)}>
+          📜 History
+        </button>
       </div>
       <p className="hint">Everyone must be on the same Wi-Fi. 2–5 divers.</p>
       {showBoard && <Leaderboard onClose={() => setShowBoard(false)} />}
       {showHelp && <HowToPlay onClose={() => setShowHelp(false)} />}
+      {showHistory && <History onClose={() => setShowHistory(false)} />}
     </div>
   );
 }

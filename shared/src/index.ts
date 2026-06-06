@@ -10,3 +10,4 @@ export * from "./missions.js";
 export * from "./protocol.js";
 export * from "./leaderboard.js";
 export * from "./bots.js";
+export * from "./history.js";

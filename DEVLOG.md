@@ -457,3 +457,34 @@ mission complications (comms-off), optional raster art.
 - **"I don't understand the gameplay":** added an in-game **? Help** button (opens
   how-to-play during a match) and a plain-language "in one breath" summary at the top of
   the rules. **68 tests pass.**
+
+---
+
+## Cycle 13 — Gameplay history / replay
+**Date:** 2026-06-07
+
+### Planned (≤5 goals)
+1. Engine records each resolved trick (`resolvedTricks`).
+2. `HistoryStore` (JSON) saves a full `GameRecord` on game end.
+3. REST: `GET /api/history` (summaries) + `GET /api/history/:id` (full).
+4. Client History view: list past games + step through tricks.
+5. Tests (store + recording via RoomManager + endpoints).
+
+### Developed
+- `shared/game.ts` — `ResolvedTrick` + `resolvedTricks` accumulated on each resolution.
+- `shared/history.ts` — `GameRecord`, `HistorySummary`, `toSummary`.
+- `server/history.ts` — `HistoryStore` (save/get/listSummaries, prune to cap, corrupt-safe).
+- `server/rooms.ts` — injected history store; `recordHistory()` builds + saves a GameRecord
+  on terminal (captures the played level before win-increment).
+- `server/gameServer.ts` — history store wired; `/api/history` + `/api/history/:id`.
+- `client/screens/History.tsx` — list + trick-by-trick Review (prev/next, winner 🏆, tasks);
+  Home "📜 History" button.
+- Tests: `server/history.test.ts` — store save/get/summarise/order, RoomManager records a
+  finished game with its tricks, endpoints list/fetch/404. (**72 tests total.**)
+
+### Issues found
+- Strict typecheck flagged `Play` not imported in `game.ts` (used by new `ResolvedTrick`);
+  tests/build passed because esbuild strips types. **Fixed** the import.
+
+### Verification
+- `npm test` → **72/72**. typecheck (both) clean. client builds.

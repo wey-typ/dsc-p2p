@@ -1,4 +1,4 @@
-import { type Card, type Player, type Trick } from "./types.js";
+import { type Card, type Player, type Trick, type Play } from "./types.js";
 import { cardsEqual, deal, cardId, sonarPosition, type SonarPosition } from "./cards.js";
 import { legalMoves, isLegalPlay, trickWinner } from "./trick.js";
 
@@ -7,6 +7,13 @@ export interface Communication {
   readonly seat: number;
   readonly card: Card;
   readonly position: SonarPosition;
+}
+
+/** A completed trick with its outcome, kept for post-game review/replay. */
+export interface ResolvedTrick {
+  readonly leader: number;
+  readonly plays: Play[];
+  readonly winner: number;
 }
 import {
   type MissionTask,
@@ -53,6 +60,8 @@ export interface GameState {
   lastTrick?: Trick;
   /** Seat that won `lastTrick`. */
   lastTrickWinner?: number;
+  /** Every resolved trick this game, in order (for post-game review/replay). */
+  resolvedTricks?: ResolvedTrick[];
 }
 
 /**
@@ -176,8 +185,17 @@ function resolveCompletedTrick(state: GameState): GameState {
   const trickNo = state.trickNumber + 1;
   const cardsInTrick = state.trick.plays.map((p) => p.card);
 
-  // Remember the completed trick so the UI can show it after the table is cleared.
-  state = { ...state, lastTrick: state.trick, lastTrickWinner: winner };
+  // Remember the completed trick so the UI can show it after the table is cleared,
+  // and append it to the full game history for post-game review.
+  state = {
+    ...state,
+    lastTrick: state.trick,
+    lastTrickWinner: winner,
+    resolvedTricks: [
+      ...(state.resolvedTricks ?? []),
+      { leader: state.trick.leader, plays: state.trick.plays, winner },
+    ],
+  };
 
   // Tasks whose target card was captured in this trick.
   const resolving = state.tasks.filter(
