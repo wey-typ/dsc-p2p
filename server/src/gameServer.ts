@@ -13,6 +13,7 @@ import {
   type JoinAck,
 } from "@dsc/shared";
 import { RoomManager, type Room } from "./rooms.js";
+import type { CampaignStore } from "./campaign.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -23,7 +24,7 @@ export interface GameServer {
 }
 
 /** Build the HTTP + Socket.IO server with all room/game handlers wired up. */
-export function createGameServer(seed?: number): GameServer {
+export function createGameServer(seed?: number, store?: CampaignStore | null): GameServer {
   const app = express();
   const clientDist = path.resolve(__dirname, "../../client/dist");
   app.use(express.static(clientDist));
@@ -31,7 +32,7 @@ export function createGameServer(seed?: number): GameServer {
 
   const httpServer = createServer(app);
   const io = new Server(httpServer, { cors: { origin: "*" } });
-  const rooms = new RoomManager(seed);
+  const rooms = new RoomManager(seed, store);
 
   /** socket.id -> { code, playerId } for routing plays and cleanup. */
   const membership = new Map<string, { code: string; playerId: string }>();
@@ -53,6 +54,20 @@ export function createGameServer(seed?: number): GameServer {
     }
   }
 
+  /** Run a host-only room action, then rebroadcast. Non-hosts are ignored. */
+  function hostAction(
+    socketId: string,
+    fn: (code: string) => { ok: true } | { error: string }
+  ): void {
+    const m = membership.get(socketId);
+    if (!m) return;
+    const room = rooms.getRoom(m.code);
+    if (!room || room.hostId !== m.playerId) return;
+    fn(m.code);
+    const updated = rooms.getRoom(m.code);
+    if (updated) broadcastRoom(updated);
+  }
+
   function handleLeave(socketId: string): void {
     const m = membership.get(socketId);
     if (!m) return;
@@ -64,7 +79,7 @@ export function createGameServer(seed?: number): GameServer {
 
   io.on("connection", (socket) => {
     socket.on(EV.RoomCreate, (payload: CreatePayload, ack?: (a: JoinAck) => void) => {
-      const { room, player } = rooms.createRoom(payload?.name ?? "");
+      const { room, player } = rooms.createRoom(payload?.name ?? "", payload?.crewName);
       socket.join(room.code);
       membership.set(socket.id, { code: room.code, playerId: player.id });
       ack?.({ ok: true, code: room.code, youId: player.id, seat: player.seat });
@@ -83,19 +98,18 @@ export function createGameServer(seed?: number): GameServer {
     socket.on(EV.GameStart, (payload: StartPayload) => {
       const m = membership.get(socket.id);
       if (!m) return;
+      const room0 = rooms.getRoom(m.code);
+      if (!room0 || room0.hostId !== m.playerId) return; // host only
       const res = rooms.startGame(m.code, payload?.taskCount);
       if ("error" in res) return socket.emit(EV.ErrorMsg, { message: res.error });
       const room = rooms.getRoom(m.code);
       if (room) broadcastRoom(room);
     });
 
-    socket.on(EV.GameRestart, () => {
-      const m = membership.get(socket.id);
-      if (!m) return;
-      rooms.restart(m.code);
-      const room = rooms.getRoom(m.code);
-      if (room) broadcastRoom(room);
-    });
+    socket.on(EV.GameRestart, () => hostAction(socket.id, (code) => rooms.restart(code)));
+    socket.on(EV.GameEnd, () => hostAction(socket.id, (code) => rooms.endGame(code)));
+    socket.on(EV.GamePause, () => hostAction(socket.id, (code) => rooms.pause(code)));
+    socket.on(EV.GameResume, () => hostAction(socket.id, (code) => rooms.resume(code)));
 
     socket.on(EV.GamePlay, (payload: PlayPayload) => {
       const m = membership.get(socket.id);

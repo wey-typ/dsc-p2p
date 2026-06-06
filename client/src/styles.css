@@ -153,6 +153,24 @@ button { font-family: inherit; }
 .tag { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; background: rgba(233,246,251,0.12); padding: 3px 7px; border-radius: 999px; }
 .tag.you { background: var(--gold); color: #1a1205; }
 
+/* ---- Campaign banner (lobby) ---- */
+.campaign-banner {
+  display: flex; flex-direction: column; gap: 2px;
+  background: rgba(242, 193, 78, 0.12);
+  border: 1px solid rgba(242, 193, 78, 0.4);
+  border-radius: 12px; padding: 10px 14px;
+}
+.cb-name { font-weight: 800; color: var(--gold); }
+.cb-stats { font-size: 0.8rem; color: var(--foam-dim); }
+
+/* ---- In-game control bar ---- */
+.game-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.game-mission { font-size: 0.78rem; color: var(--foam-dim); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-controls { display: flex; gap: 6px; flex: 0 0 auto; }
+.btn.chip { padding: 7px 11px; min-height: 0; font-size: 0.8rem; background: rgba(233,246,251,0.1); color: var(--foam); border: 1px solid rgba(169,205,217,0.3); border-radius: 999px; }
+.btn.chip.danger { background: rgba(231,88,91,0.18); border-color: var(--danger); }
+.overlay.paused .overlay-card { border-color: var(--gold); }
+
 /* ============================================================
    Cards
    ============================================================ */

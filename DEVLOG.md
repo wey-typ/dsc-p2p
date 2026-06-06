@@ -172,3 +172,46 @@ Format per cycle: **Planned / Developed / Issues found / Next steps**.
 - Game controls: restart (done minimally) + pause + end; host-only guards.
 - Persist campaign progress (JSON) on game end; resume.
 - Surface controls in the UI (lobby + in-game menu).
+
+---
+
+## Cycle 5 — Controls + saved progression
+**Date:** 2026-06-06
+
+### Planned (≤5 goals)
+1. `CampaignStore` — JSON persistence of crew progress (level/attempts/cleared).
+2. Wire progression into rooms: win → level++/save, loss → attempts++/save; resume on
+   recreate by crew name; scale task count with level.
+3. Pause / resume / end-game in RoomManager + protocol events (host-only).
+4. Server handlers (`hostAction` guard) + crew name on create + injectable store.
+5. Client UI: crew-name field, lobby campaign banner, in-game control bar, paused
+   overlay, end-overlay Next-mission/Retry. Tests.
+
+### Developed
+- `server/campaign.ts` — `CampaignStore` (load/save/list, corrupt-file safe, injectable
+  baseDir), `slugify`. `taskCountForLevel` (2→8 cap).
+- `server/rooms.ts` — campaign fields on `Room`, store injection, `createRoom(name,
+  crewName)` loads saved progress, `startGame` scales by level + rejects mid-game,
+  `play` persists on terminal transition, `pause/resume/endGame`, `toRoomView` extended.
+- `shared/protocol.ts` — `GamePause/Resume/End` events; `RoomView` gains
+  `paused/campaignName/level/attempts/cleared`; `CreatePayload.crewName`.
+- `server/gameServer.ts` — `hostAction` host-only guard, pause/resume/end handlers,
+  host-guarded start, store passthrough.
+- `client` — Home crew-name field; Lobby campaign banner + "Begin Mission N"; Game
+  control bar (Pause/Resume/End), paused overlay, end overlay with Next-mission (won) /
+  Retry (lost) / Back-to-lobby. New CSS. `state.tsx` gains pause/resume/endGame.
+- Tests: `server/campaign.test.ts` — **9 tests** (store fresh/persist/list/slug;
+  level scaling; win-advances-&-persists + resume; pause blocks play; no double-start;
+  endGame→lobby). Integration test now uses a null store (no disk writes).
+
+### Issues found
+- None blocking. Minor: campaign keyed by crew-name slug → two crews choosing the same
+  name share a save. Acceptable for LAN/friends; note for later (could salt with code).
+
+### Verification
+- `npm test` → **47/47 passing**. `npm run typecheck` + `typecheck:client` → clean.
+  `npm run build:client` → ok.
+
+### Next steps (Cycle 6)
+- Leaderboard: REST endpoint listing campaigns (missions cleared, attempts) + a client
+  Leaderboard view reachable from Home/Lobby.

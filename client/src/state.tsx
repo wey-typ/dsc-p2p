@@ -15,10 +15,13 @@ interface GameContextValue {
   youId: string | null;
   error: string | null;
   clearError: () => void;
-  createRoom: (name: string) => Promise<JoinAck>;
+  createRoom: (name: string, crewName?: string) => Promise<JoinAck>;
   joinRoom: (code: string, name: string) => Promise<JoinAck>;
   startGame: (taskCount?: number) => void;
   restart: () => void;
+  pause: () => void;
+  resume: () => void;
+  endGame: () => void;
   play: (card: Card) => void;
   leave: () => void;
 }
@@ -69,12 +72,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       youId,
       error,
       clearError: () => setError(null),
-      createRoom: (name) => emitWithAck(EV.RoomCreate, { name }),
+      createRoom: (name, crewName) => emitWithAck(EV.RoomCreate, { name, crewName }),
       joinRoom: (code, name) => emitWithAck(EV.RoomJoin, { code: code.toUpperCase(), name }),
       startGame: (taskCount) => s().emit(EV.GameStart, { taskCount }),
       restart: () => {
         setView(null);
         s().emit(EV.GameRestart, {});
+      },
+      pause: () => s().emit(EV.GamePause, {}),
+      resume: () => s().emit(EV.GameResume, {}),
+      endGame: () => {
+        setView(null);
+        s().emit(EV.GameEnd, {});
       },
       play: (card) => s().emit(EV.GamePlay, { card }),
       leave: () => {

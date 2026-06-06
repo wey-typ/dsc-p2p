@@ -8,11 +8,11 @@ import {
   createGame,
   playCard,
   buildSimpleMission,
-  defaultTaskCount,
   mulberry32,
   MIN_PLAYERS,
   MAX_PLAYERS,
 } from "@dsc/shared";
+import { CampaignStore } from "./campaign.js";
 
 export interface RoomPlayer {
   id: string;
@@ -29,17 +29,35 @@ export interface Room {
   phase: "lobby" | "playing" | "won" | "lost";
   game: GameState | null;
   mission: Mission | null;
+  paused: boolean;
+  // Campaign progress (mirrors the persisted record).
+  campaignName: string;
+  campaignId: string;
+  level: number;
+  attempts: number;
+  cleared: number;
 }
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no ambiguous 0/O/1/I
 
+/** Tasks scale with campaign level; capped so a single game stays ~20 min. */
+export function taskCountForLevel(level: number): number {
+  return Math.min(2 + level, 8);
+}
+
 export class RoomManager {
   private rooms = new Map<string, Room>();
   private rng: () => number;
+  private store: CampaignStore | null;
 
-  constructor(seed?: number) {
-    // Default to a time-free-but-varied seed; tests pass a fixed seed for determinism.
+  constructor(seed?: number, store?: CampaignStore | null) {
     this.rng = mulberry32(seed ?? 0x9e3779b9);
+    this.store = store === undefined ? new CampaignStore() : store;
+  }
+
+  private now(): number {
+    // Real wall-clock in production; harmless for tests (timestamps unasserted).
+    return Date.now();
   }
 
   private genCode(): string {
@@ -61,7 +79,7 @@ export class RoomManager {
     return this.rooms.get(code.toUpperCase());
   }
 
-  createRoom(hostName: string): { room: Room; player: RoomPlayer } {
+  createRoom(hostName: string, crewName?: string): { room: Room; player: RoomPlayer } {
     const code = this.genCode();
     const player: RoomPlayer = {
       id: this.nextId(),
@@ -70,6 +88,8 @@ export class RoomManager {
       connected: true,
       isBot: false,
     };
+    const name = sanitizeCrewName(crewName) || `Crew ${code}`;
+    const progress = this.store ? this.store.load(name, this.now()) : null;
     const room: Room = {
       code,
       hostId: player.id,
@@ -77,6 +97,12 @@ export class RoomManager {
       phase: "lobby",
       game: null,
       mission: null,
+      paused: false,
+      campaignName: name,
+      campaignId: progress?.id ?? name,
+      level: progress?.level ?? 0,
+      attempts: progress?.attempts ?? 0,
+      cleared: progress?.cleared ?? 0,
     };
     this.rooms.set(code, room);
     return { room, player };
@@ -98,7 +124,6 @@ export class RoomManager {
     return { room, player };
   }
 
-  /** Mark a member disconnected; if it empties the room, delete it. */
   disconnect(code: string, playerId: string): void {
     const room = this.getRoom(code);
     if (!room) return;
@@ -112,13 +137,14 @@ export class RoomManager {
   startGame(code: string, taskCount?: number, seed?: number): { ok: true } | { error: string } {
     const room = this.getRoom(code);
     if (!room) return { error: "Room not found." };
+    if (room.phase === "playing") return { error: "Game already in progress." };
     if (room.players.length < MIN_PLAYERS) {
       return { error: `Need at least ${MIN_PLAYERS} players.` };
     }
     const n = room.players.length;
     const rng = mulberry32(seed ?? Math.floor(this.rng() * 1e9));
-    const count = taskCount ?? defaultTaskCount(n);
-    const mission = buildSimpleMission(n, count, rng);
+    const count = taskCount ?? taskCountForLevel(room.level);
+    const mission = buildSimpleMission(n, count, rng, `mission-${room.level + 1}`);
     const enginePlayers: Player[] = room.players.map((p) => ({
       id: p.id,
       name: p.name,
@@ -127,31 +153,78 @@ export class RoomManager {
     room.mission = mission;
     room.game = createGame(enginePlayers, mission, rng);
     room.phase = "playing";
+    room.paused = false;
     return { ok: true };
   }
 
-  /** Restart the same room from the lobby (or replay a new deal). */
-  restart(code: string): { ok: true } | { error: string } {
+  /** Return to the lobby, keeping campaign progress (used for "end" / "back to lobby"). */
+  endGame(code: string): { ok: true } | { error: string } {
     const room = this.getRoom(code);
     if (!room) return { error: "Room not found." };
+    this.persist(room);
     room.game = null;
     room.mission = null;
     room.phase = "lobby";
+    room.paused = false;
+    return { ok: true };
+  }
+
+  /** Alias kept for the client's "restart/back to lobby" control. */
+  restart(code: string): { ok: true } | { error: string } {
+    return this.endGame(code);
+  }
+
+  pause(code: string): { ok: true } | { error: string } {
+    const room = this.getRoom(code);
+    if (!room) return { error: "Room not found." };
+    if (room.phase !== "playing") return { error: "No game to pause." };
+    room.paused = true;
+    return { ok: true };
+  }
+
+  resume(code: string): { ok: true } | { error: string } {
+    const room = this.getRoom(code);
+    if (!room) return { error: "Room not found." };
+    room.paused = false;
     return { ok: true };
   }
 
   play(code: string, playerId: string, card: Card): { ok: true } | { error: string } {
     const room = this.getRoom(code);
     if (!room || !room.game) return { error: "No active game." };
+    if (room.paused) return { error: "Game is paused." };
     const player = room.players.find((p) => p.id === playerId);
     if (!player) return { error: "You are not in this room." };
+    const wasPlaying = room.game.phase === "playing";
     try {
       room.game = playCard(room.game, player.seat, card);
       room.phase = room.game.phase;
-      return { ok: true };
     } catch (e) {
       return { error: e instanceof Error ? e.message : "Illegal move." };
     }
+    // On transition to a terminal state, update + persist campaign progress.
+    if (wasPlaying && room.game.phase !== "playing") {
+      if (room.game.phase === "won") {
+        room.cleared += 1;
+        room.level += 1;
+      } else {
+        room.attempts += 1;
+      }
+      this.persist(room);
+    }
+    return { ok: true };
+  }
+
+  private persist(room: Room): void {
+    if (!this.store) return;
+    this.store.save({
+      id: room.campaignId,
+      name: room.campaignName,
+      level: room.level,
+      attempts: room.attempts,
+      cleared: room.cleared,
+      updatedAt: this.now(),
+    });
   }
 
   toRoomView(room: Room): RoomView {
@@ -169,6 +242,11 @@ export class RoomManager {
       players,
       minPlayers: MIN_PLAYERS,
       maxPlayers: MAX_PLAYERS,
+      paused: room.paused,
+      campaignName: room.campaignName,
+      level: room.level,
+      attempts: room.attempts,
+      cleared: room.cleared,
     };
   }
 }
@@ -176,4 +254,8 @@ export class RoomManager {
 export function sanitizeName(name: string): string {
   const trimmed = (name ?? "").trim().slice(0, 16);
   return trimmed.length > 0 ? trimmed : "Diver";
+}
+
+export function sanitizeCrewName(name: string | undefined): string {
+  return (name ?? "").trim().slice(0, 24);
 }

@@ -20,6 +20,13 @@ export interface RoomView {
   readonly players: RoomPlayerView[];
   readonly minPlayers: number;
   readonly maxPlayers: number;
+  /** True while the host has paused an in-progress game. */
+  readonly paused: boolean;
+  /** Campaign progress for this crew. */
+  readonly campaignName: string;
+  readonly level: number;
+  readonly attempts: number;
+  readonly cleared: number;
 }
 
 // ---- socket event names (single source of truth for client + server) ----
@@ -31,6 +38,9 @@ export const EV = {
   GameStart: "game:start",
   GamePlay: "game:play",
   GameRestart: "game:restart",
+  GamePause: "game:pause",
+  GameResume: "game:resume",
+  GameEnd: "game:end",
   // server -> client
   RoomState: "room:state",
   GameView: "game:view",
@@ -40,6 +50,8 @@ export const EV = {
 // ---- payloads ----
 export interface CreatePayload {
   name: string;
+  /** Optional crew/campaign name used to save & resume progress. */
+  crewName?: string;
 }
 export interface JoinPayload {
   code: string;

@@ -4,6 +4,7 @@ import { useGame } from "../state";
 export function Home() {
   const { createRoom, joinRoom, connected } = useGame();
   const [name, setName] = useState("");
+  const [crew, setCrew] = useState("");
   const [code, setCode] = useState("");
   const [mode, setMode] = useState<"menu" | "join">("menu");
   const [busy, setBusy] = useState(false);
@@ -13,7 +14,7 @@ export function Home() {
   async function onCreate() {
     if (!nameOk) return;
     setBusy(true);
-    await createRoom(name.trim());
+    await createRoom(name.trim(), crew.trim() || undefined);
     setBusy(false);
   }
   async function onJoin() {
@@ -45,6 +46,16 @@ export function Home() {
 
         {mode === "menu" ? (
           <div className="stack">
+            <label className="field">
+              <span>Crew name (optional — saves your progress)</span>
+              <input
+                value={crew}
+                onChange={(e) => setCrew(e.target.value)}
+                placeholder="e.g. The Anglerfish"
+                maxLength={24}
+                autoComplete="off"
+              />
+            </label>
             <button className="btn primary" disabled={!nameOk || busy || !connected} onClick={onCreate}>
               Create a crew
             </button>

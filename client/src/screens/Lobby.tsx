@@ -18,6 +18,13 @@ export function Lobby() {
         </div>
       </header>
 
+      <div className="campaign-banner">
+        <span className="cb-name">🚩 {room.campaignName}</span>
+        <span className="cb-stats">
+          Mission {room.level + 1} · {room.cleared} cleared · {room.attempts} attempts
+        </span>
+      </div>
+
       <h2>Crew ({room.players.length}/{room.maxPlayers})</h2>
       <ul className="crew-list">
         {room.players.map((p) => (
@@ -38,7 +45,7 @@ export function Lobby() {
 
       {isHost ? (
         <button className="btn primary big" disabled={!canStart} onClick={() => startGame()}>
-          {canStart ? "Begin the dive" : `Need ${room.minPlayers - room.players.length} more`}
+          {canStart ? `Begin Mission ${room.level + 1}` : `Need ${room.minPlayers - room.players.length} more`}
         </button>
       ) : (
         <p className="hint center">Waiting for the host to begin the dive…</p>
