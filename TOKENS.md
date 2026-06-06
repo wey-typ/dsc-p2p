@@ -39,3 +39,4 @@ Each new cycle appends a row with an estimate + a one-line basis. (Cycles 12+ be
 | 15 | Bot training + Bot Lab | ~34k | trainer + store + CLI + API + UI + tests |
 | 16 | Bot campaign report (5-pass, all levels, HTML) | ~30k | sim + HTML gen + CLI + route + tests + measurement |
 | 17 | Best-move advisor (hint/cheat) | ~22k | advisor + reasons + Hint UI + hooks fix + tests |
+| 18 | Subtle animations (CSS) | ~10k | keyframes + reduced-motion |

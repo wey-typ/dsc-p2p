@@ -637,3 +637,24 @@ static image due to data volume + phone viewability).
 
 ### Verification
 - `npm test` → **86/86**; typecheck (both) clean; client builds.
+
+---
+
+## Cycle 18 — Subtle animations
+**Date:** 2026-06-07
+
+### Planned (≤5 goals)
+1. Cards animate onto the table when played.
+2. One-time "deal" as your hand appears.
+3. Pop when a task completes; glow on the trick winner.
+4. Overlays scale-in.
+5. Honor `prefers-reduced-motion`; no logic/test impact.
+
+### Developed
+- `client/styles.css` — keyframes `cardIn`, `dealIn`, `pop`, `overlayIn`, `winnerGlow`
+  applied to `.trick .trick-play`, `.hand .card`, `.task-done`, `.lasttrick-area .lt-won`,
+  `.overlay-card`. Stable React keys mean per-card deal/play animations fire once (no
+  re-trigger churn). Full `prefers-reduced-motion` opt-out.
+
+### Verification
+- `npm run build:client` OK; `npm test` → **86/86** (CSS-only, no logic change).
