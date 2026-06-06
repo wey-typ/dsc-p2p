@@ -1,5 +1,6 @@
 import { createServer, type Server as HttpServer } from "node:http";
 import { fileURLToPath } from "node:url";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import express from "express";
 import { Server } from "socket.io";
@@ -62,6 +63,16 @@ export function createGameServer(
   });
   app.get("/api/bot-stats", (_req, res) => {
     res.json(lab ? lab.stats() : { weights: null, totalRuns: 0, bestWinRate: 0, latestWinRate: null, recent: [] });
+  });
+  // The latest generated bot campaign report (run `npm run bot-report`).
+  app.get("/bot-report", (_req, res) => {
+    const file = path.resolve(__dirname, "../../data/reports/bot-report.html");
+    if (!existsSync(file)) {
+      return res
+        .status(404)
+        .send("<p>No bot report yet. Run <code>npm run bot-report</code> first.</p>");
+    }
+    res.sendFile(file);
   });
 
   const httpServer = createServer(app);

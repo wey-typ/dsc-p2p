@@ -566,3 +566,42 @@ reactive bot can't do; the smart bot at least never self-destructs on ordering a
 ### Verification
 - `npm test` → **79/79**; typecheck (both) clean; client builds; `/api/bot-stats` serves
   trained weights + run log; trainer CLI verified end-to-end.
+
+---
+
+## Cycle 16 — Bot campaign report (5 passes, all levels)
+**Date:** 2026-06-07
+New goal (user): bots play through every level 5×, looping back to level 1 after the last;
+record each trick + per-level failures; show it visually (scrollable HTML chosen over a
+static image due to data volume + phone viewability).
+
+### Planned (≤5 goals)
+1. `simulateBotCampaign` (shared): passes × levels in order, records tricks + outcomes.
+2. Per-level failure aggregation + totals.
+3. HTML report builder (scrollable, styled, collapsible games).
+4. `npm run bot-report [players] [passes]` CLI + `/bot-report` server route.
+5. Tests + generate a real report.
+
+### Developed
+- `shared/training.ts` — `simulateBotGame` returns the FINAL state (reused by report);
+  `playBotGame` now delegates to it.
+- `shared/report.ts` — `simulateBotCampaign` → `BotCampaignReport` (per-game
+  `ResolvedTrick[]` + tasks + outcome/failReason; per-level `LevelSummary`; totals).
+- `server/report-html.ts` — `buildReportHtml`: KPIs, per-level summary table with win-rate
+  bars, and `<details>` per game with a trick-by-trick table (coloured card chips + winner).
+- `server/report.ts` CLI (uses trained weights) writes `data/reports/bot-report.{html,json}`;
+  `report`/`bot-report` npm scripts; `GET /bot-report` serves the latest HTML.
+- Tests: `shared/report.test.ts` (counts, determinism, pass-order). **82 tests total.**
+
+### Findings (real data)
+- Default switched to **3 bots** (their best count). 5-pass run: L1 40%, L2 20%, L3–L9 0%.
+  Reactive bots can clear easy missions but not ordered/constrained ones (needs lookahead) —
+  the 42 loss records each include the exact failure reason + the trick that broke it.
+
+### Issues found
+- First run used 4 bots → 0/45 (4-bot win rate ~13% on L0 × only 5 samples → often 0). Not a
+  regression; verified true rates over 80 seeds. Switched default to 3 bots for a fair view.
+
+### Verification
+- `npm test` → **82/82**; typecheck clean; `npm run bot-report` writes the report;
+  `GET /bot-report` → 200, 75 KB, 45 games / 534 trick chips / 42 fail reasons.

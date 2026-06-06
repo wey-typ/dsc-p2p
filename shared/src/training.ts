@@ -1,8 +1,22 @@
 import type { Player } from "./types.js";
 import { type BotWeights, DEFAULT_WEIGHTS, chooseBotPlay } from "./bots.js";
-import { createGame, playCard } from "./game.js";
+import { type GameState, createGame, playCard } from "./game.js";
 import { buildMissionForLevel } from "./missions.js";
 import { mulberry32 } from "./rng.js";
+
+/** Play one full bot-only game with the given weights and return the FINAL state. */
+export function simulateBotGame(
+  n: number,
+  level: number,
+  seed: number,
+  weights: BotWeights
+): GameState {
+  let state = createGame(botPlayers(n), buildMissionForLevel(n, level, mulberry32(seed)), mulberry32(seed + 7));
+  for (let i = 0; i < 80 && state.phase === "playing"; i++) {
+    state = playCard(state, state.turn, chooseBotPlay(state, state.turn, weights));
+  }
+  return state;
+}
 
 /** One generation's result during training (for the "improvement over time" log). */
 export interface TrainingGeneration {
@@ -34,11 +48,7 @@ function botPlayers(n: number): Player[] {
 
 /** Play one full bot-only game with the given weights; return true on a win. */
 export function playBotGame(n: number, level: number, seed: number, weights: BotWeights): boolean {
-  let state = createGame(botPlayers(n), buildMissionForLevel(n, level, mulberry32(seed)), mulberry32(seed + 7));
-  for (let i = 0; i < 80 && state.phase === "playing"; i++) {
-    state = playCard(state, state.turn, chooseBotPlay(state, state.turn, weights));
-  }
-  return state.phase === "won";
+  return simulateBotGame(n, level, seed, weights).phase === "won";
 }
 
 /** Win rate of `weights` across the evaluation suite (deterministic for fixed seeds). */

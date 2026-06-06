@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
-    "train": "tsx src/train.ts"
+    "train": "tsx src/train.ts",
+    "report": "tsx src/report.ts"
   },
   "dependencies": {
     "@dsc/shared": "*",
