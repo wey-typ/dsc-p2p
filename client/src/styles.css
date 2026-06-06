@@ -272,6 +272,7 @@ button { font-family: inherit; }
   display: flex; align-items: center; justify-content: center;
   background: rgba(4, 20, 31, 0.78); backdrop-filter: blur(4px);
   padding: 20px;
+  overflow-y: auto; /* tall modals (help) scroll on small phones */
 }
 .overlay-card {
   background: var(--deep); border-radius: 18px; padding: 26px 22px;
@@ -292,6 +293,18 @@ button { font-family: inherit; }
 .lb-rank { font-weight: 800; color: var(--gold); width: 2em; }
 .lb-name { font-weight: 600; }
 .btn.link.center { display: block; margin: 0 auto; }
+
+/* ---- How to play ---- */
+.help-card { max-width: 460px; text-align: left; margin: auto; }
+.help-card h2 { text-align: center; }
+.help-card h3 { margin: 16px 0 6px; font-size: 0.95rem; color: var(--gold); }
+.help-lead { color: var(--foam-dim); font-size: 0.9rem; margin: 0 0 4px; line-height: 1.5; }
+.help-list { margin: 0; padding-left: 18px; color: var(--foam-dim); font-size: 0.9rem; line-height: 1.55; }
+.help-list strong { color: var(--foam); }
+.help-card .btn.primary { margin-top: 18px; width: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0; }
+.legend-item { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 0.7rem; color: var(--foam-dim); }
+.home-links { display: flex; gap: 18px; justify-content: center; }
 
 /* ---- Toast ---- */
 .toast {

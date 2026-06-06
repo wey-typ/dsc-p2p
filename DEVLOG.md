@@ -323,3 +323,38 @@ Format per cycle: **Planned / Developed / Issues found / Next steps**.
 ### Next steps (Cycle 9)
 - Theme & graphics polish pass (palette/typography/component consistency); a short style
   guide; verify responsiveness across phone widths.
+
+---
+
+## Cycle 9 — Theme polish + style guide
+**Date:** 2026-06-06
+(Decision: keep CSS-only visuals — no raster assets — for mobile load speed & one source
+of truth. Image generation noted as optional backlog.)
+
+### Planned (≤5 goals)
+1. Player-facing "How to play" modal + suit legend (completeness/fun).
+2. Scrollable overlays for tall modals on small phones.
+3. Home links row (How to play / Leaderboard).
+4. `STYLEGUIDE.md` documenting the design system.
+5. Rebuild + verify.
+
+### Developed
+- `client/screens/HowToPlay.tsx` — original-wording rules: suits legend, trick flow,
+  tasks & ordering badges, sonar. Wired into Home with a links row.
+- `styles.css` — help/legend styles, overlay `overflow-y:auto`, `.home-links`.
+- `STYLEGUIDE.md` — palette tokens, suit semantics, type scale, spacing/shape,
+  components, motion, accessibility, asset guidance.
+
+### Issues found
+- None. (Visual responsiveness confirmed by CSS review — mobile-first, 600px breakpoint,
+  safe-area insets, horizontal-scroll hands/strips; live device check remains the user's
+  to do via the LAN URL since the preview MCP is sandboxed from the project path.)
+
+### Verification
+- `npm run typecheck:client` clean; `npm run build:client` ok; engine tests unchanged
+  (**60/60**).
+
+### Next steps (Cycle 10)
+- QA audit: address dev-toolchain npm-audit advisories (vitest v4 bump), responsiveness
+  review, edge-case hardening (reconnect/disconnect mid-game, host leaves), final bug
+  sweep + README run/handover instructions.
