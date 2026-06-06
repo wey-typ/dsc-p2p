@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "deepsea",
+      "runtimeExecutable": "/Users/harry/.local/node/current/bin/npm",
+      "runtimeArgs": ["start", "-w", "@dsc/server"],
+      "port": 3000
+    }
+  ]
+}

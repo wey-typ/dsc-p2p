@@ -127,3 +127,48 @@ Format per cycle: **Planned / Developed / Issues found / Next steps**.
 - `client/` workspace (Vite + React): name/join + lobby screens.
 - Responsive game board: your hand, current trick, tasks, turn indicator.
 - Tap a legal card to play; win/lose screens; socket client wiring.
+
+---
+
+## Cycle 4 — Client UI (first playable build)
+**Date:** 2026-06-06
+
+### Planned (≤5 goals)
+1. `client/` workspace (Vite + React + TS + socket.io-client); shared engine via alias.
+2. Screens: Home (name + create/join code), Lobby, Game, end overlay.
+3. Socket state hook (`state.tsx`) bridging server events to React.
+4. Responsive ocean-themed board: player strip, tasks, trick, hand, turn banner.
+5. Build the client; verify the whole pipeline end-to-end.
+
+### Developed
+- `client/` — Vite config aliasing `@dsc/shared` → TS source (Vite transpiles it),
+  dev proxy for `/socket.io`. `state.tsx` (GameProvider/useGame), `App.tsx` (screen
+  routing), `screens/Home|Lobby|Game`, `components/CardView|Toast`, `styles.css`
+  (mobile-first ocean theme: animated background, suit-coloured cards, sticky hand,
+  win/lose overlay, safe-area insets, ≥48px tap targets, ≥600px breakpoint).
+- Refactored server into `gameServer.ts` (`createGameServer()` factory) + thin
+  `index.ts` bootstrap — makes the socket layer testable.
+- `scripts/run-server.sh` + `.claude/launch.json` to launch with local Node on PATH.
+
+### Issues found
+1. **Browser preview MCP is sandboxed away from this project path** ("Operation not
+   permitted" on the dir; npm's `env node` also unavailable). Tried absolute-npm and a
+   bash-wrapper launch — both blocked by the sandbox. **Pivoted** to a headless
+   Socket.IO integration test for end-to-end verification (stronger + CI-friendly);
+   visual check deferred to on-device / static preview panel.
+2. **Integration test race (FIXED):** initial driver read whose-turn from one client's
+   possibly-stale view and broke early. Fixed by selecting the actor by who actually
+   holds `legalMoves`, with a tiny settle delay.
+3. Vite resolving the shared engine's `.js` imports to `.ts` — **worked out of the box**
+   (esbuild rewrite); no fallback needed.
+
+### Verification
+- `npm run build:client` → built (76 modules, ~61 kB gz JS). `npm run typecheck` +
+  `typecheck:client` → clean. Server boots and serves `dist` + `/health`.
+- `npm test` → **38/38 passing**, incl. a full 3-client game over the wire that also
+  asserts per-seat hand privacy and the 40-card invariant.
+
+### Next steps (Cycle 5)
+- Game controls: restart (done minimally) + pause + end; host-only guards.
+- Persist campaign progress (JSON) on game end; resume.
+- Surface controls in the UI (lobby + in-game menu).

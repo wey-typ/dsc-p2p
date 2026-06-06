@@ -6,13 +6,18 @@
   "description": "Deep Sea Crew - a cooperative trick-taking card game for mobile (LAN multiplayer)",
   "workspaces": [
     "shared",
-    "server"
+    "server",
+    "client"
   ],
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev:server": "npm run dev -w @dsc/server"
+    "typecheck:client": "tsc -p client/tsconfig.json",
+    "dev:server": "npm run dev -w @dsc/server",
+    "dev:client": "npm run dev -w @dsc/client",
+    "build:client": "npm run build -w @dsc/client",
+    "play": "npm run build:client && npm start -w @dsc/server"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
