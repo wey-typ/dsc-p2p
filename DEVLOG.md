@@ -488,3 +488,43 @@ mission complications (comms-off), optional raster art.
 
 ### Verification
 - `npm test` → **72/72**. typecheck (both) clean. client builds.
+
+---
+
+## Cycle 14 — Smarter, parameterized bot
+**Date:** 2026-06-07
+
+### Planned (≤5 goals)
+1. Make the bot ordering-aware (never complete a task out of order → no self-destruct).
+2. Coordinate: deliver task cards to owners; non-owners duck teammate task tricks.
+3. Win task tricks decisively when not last to play.
+4. Parameterize tie-breaking with `BotWeights` (for training in Cycle 15).
+5. Measure win-rate vs a naive baseline; lock in with tests.
+
+### Developed
+- `shared/bots.ts` rewritten: `isTaskReady` (ordering check), `BotWeights` +
+  `DEFAULT_WEIGHTS`, `chooseBotPlay`:
+  - WIN a trick only if *safe* (all on-table task cards are mine and ready); win cheaply if
+    last to play, else decisively (`strongest`).
+  - DUCK tricks containing a teammate's card or an out-of-order own task.
+  - DELIVER: when leading, lead a teammate's *ready* task card so its owner can grab it
+    (others duck) — the biggest win-rate lever.
+  - Weighted `cheapest` tie-break (trump/task/high-card aversion).
+
+### Measured (60 games/cell, seeded)
+| players | L0 smart | L0 naive |
+|---|---|---|
+| 3 | 0.32 | 0.12 |
+| 4 | 0.18 | 0.02 |
+| 5 | 0.15 | 0.02 |
+Constrained levels (2+) stay low for both — winning them needs lookahead/coordination a
+reactive bot can't do; the smart bot at least never self-destructs on ordering and is ≥ naive.
+
+### Issues found
+- `TaskState` imported from the wrong module (`game` vs `tasks`); missing `default` in the
+  `isTaskReady` switch. Both fixed (caught by strict typecheck).
+- Honest limitation: heuristic bot win-rate ceiling is modest on hard missions. Noted; the
+  cheat/advisor (Cycle 16) and training (Cycle 15) build on this same evaluation.
+
+### Verification
+- `npm test` → **74/74**; typecheck clean; measured 3–9× win-rate gain on easy missions.
