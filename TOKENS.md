@@ -1,0 +1,36 @@
+# Token Usage Tracking
+
+> **Important honesty note.** The build harness does **not** expose exact token counts to
+> the assistant during a session, so these figures are **estimates**, not measured values.
+> They are derived from the volume of work per cycle (files written/edited, tool calls,
+> test runs, and response length). Treat them as rough orders of magnitude (±30–40%).
+> If you need exact numbers, they're available in your Claude usage dashboard / billing,
+> not from inside the build.
+
+Methodology: per cycle ≈ (input context re-read each turn) + (output: code + prose + tool
+calls). Later cycles cost more input because the conversation/context grows. Estimates
+below are **output-weighted** rough totals per cycle.
+
+| Cycle | Focus | Est. tokens | Notes |
+|---|---:|---:|---|
+| Research + Plan | Game research, plan, Q&A | ~25k | web research + plan file |
+| 1 | Engine core + scaffolding | ~30k | Node install, 6 files + tests |
+| 2 | Tasks + win/lose state machine | ~25k | game.ts + 14 tests |
+| 3 | Server, rooms & Socket.IO | ~30k | projection/protocol/server + tests |
+| 4 | Client UI (first playable) | ~40k | many React files + CSS + integ test |
+| 5 | Controls + saved progression | ~30k | campaign store + UI controls |
+| 6 | Leaderboard | ~18k | endpoint + ranking + view |
+| 7 | Sonar communication | ~25k | engine + UI + tests |
+| 8 | Mission set + constraints | ~20k | generator + tests |
+| 9 | Theme polish + style guide | ~20k | how-to-play + STYLEGUIDE |
+| 10 | QA, hardening & security | ~30k | 3-player bug fix + robustness tests |
+| 11 | Bot crewmates | ~25k | bot heuristic + lobby + tests |
+| UX fixes | LAN fix, last-trick, help | ~22k | post-release fixes |
+| **Subtotal (1–11 + UX)** | | **~390k** | rough |
+
+## Going forward
+Each new cycle appends a row with an estimate + a one-line basis. (Cycles 12+ below.)
+
+| Cycle | Focus | Est. tokens | Basis |
+|---|---:|---:|---|
+| 12 | Token tracking doc | ~4k | one doc |
