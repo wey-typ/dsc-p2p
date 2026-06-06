@@ -6,6 +6,7 @@ import { Server } from "socket.io";
 import {
   EV,
   projectForSeat,
+  rankLeaderboard,
   type CreatePayload,
   type JoinPayload,
   type StartPayload,
@@ -13,7 +14,7 @@ import {
   type JoinAck,
 } from "@dsc/shared";
 import { RoomManager, type Room } from "./rooms.js";
-import type { CampaignStore } from "./campaign.js";
+import { CampaignStore } from "./campaign.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -21,18 +22,26 @@ export interface GameServer {
   httpServer: HttpServer;
   io: Server;
   rooms: RoomManager;
+  store: CampaignStore | null;
 }
 
 /** Build the HTTP + Socket.IO server with all room/game handlers wired up. */
 export function createGameServer(seed?: number, store?: CampaignStore | null): GameServer {
+  // `undefined` => default disk store; `null` => no persistence (tests).
+  const campaignStore = store === undefined ? new CampaignStore() : store;
+
   const app = express();
   const clientDist = path.resolve(__dirname, "../../client/dist");
   app.use(express.static(clientDist));
   app.get("/health", (_req, res) => res.json({ ok: true }));
+  app.get("/api/leaderboard", (_req, res) => {
+    const records = campaignStore ? campaignStore.list() : [];
+    res.json(rankLeaderboard(records));
+  });
 
   const httpServer = createServer(app);
   const io = new Server(httpServer, { cors: { origin: "*" } });
-  const rooms = new RoomManager(seed, store);
+  const rooms = new RoomManager(seed, campaignStore);
 
   /** socket.id -> { code, playerId } for routing plays and cleanup. */
   const membership = new Map<string, { code: string; playerId: string }>();
@@ -124,5 +133,5 @@ export function createGameServer(seed?: number, store?: CampaignStore | null): G
     socket.on("disconnect", () => handleLeave(socket.id));
   });
 
-  return { httpServer, io, rooms };
+  return { httpServer, io, rooms, store: campaignStore };
 }

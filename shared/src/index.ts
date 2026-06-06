@@ -8,3 +8,4 @@ export * from "./game.js";
 export * from "./view.js";
 export * from "./missions.js";
 export * from "./protocol.js";
+export * from "./leaderboard.js";

@@ -215,3 +215,35 @@ Format per cycle: **Planned / Developed / Issues found / Next steps**.
 ### Next steps (Cycle 6)
 - Leaderboard: REST endpoint listing campaigns (missions cleared, attempts) + a client
   Leaderboard view reachable from Home/Lobby.
+
+---
+
+## Cycle 6 — Leaderboard / high scores
+**Date:** 2026-06-06
+
+### Planned (≤5 goals)
+1. `LeaderboardEntry` + `rankLeaderboard()` in shared (pure, testable).
+2. `GET /api/leaderboard` REST endpoint.
+3. Client Leaderboard view from Home.
+4. Vite `/api` dev proxy.
+5. Tests (ranking unit + endpoint).
+
+### Developed
+- `shared/leaderboard.ts` — `CrewRecord`/`LeaderboardEntry`, `rankLeaderboard()` (cleared
+  desc → fewer attempts → name; computes successRate).
+- `server/gameServer.ts` — store created explicitly + returned; `GET /api/leaderboard`
+  returns ranked records.
+- `client` — `screens/Leaderboard.tsx` (fetches `/api/leaderboard`, table view), Home
+  "View leaderboard" button + modal; vite `/api` proxy; leaderboard CSS.
+- Tests: `shared/leaderboard.test.ts` (3) + `server/leaderboard.test.ts` (endpoint with
+  a temp store, 1).
+
+### Issues found
+- None.
+
+### Verification
+- `npm test` → **51/51 passing**. typecheck (both) clean. client builds.
+
+### Next steps (Cycle 7)
+- Sonar communication (once-per-mission highest/only/lowest reveal) + distress signal
+  (pass one card before play). Engine + protocol + UI.

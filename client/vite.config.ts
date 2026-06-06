@@ -17,8 +17,9 @@ export default defineConfig({
   server: {
     fs: { allow: [path.resolve(dir, "..")] },
     proxy: {
-      // In dev, forward Socket.IO to the game server on :3000.
+      // In dev, forward Socket.IO + REST to the game server on :3000.
       "/socket.io": { target: "http://localhost:3000", ws: true },
+      "/api": { target: "http://localhost:3000" },
     },
   },
   build: { outDir: "dist", emptyOutDir: true },
