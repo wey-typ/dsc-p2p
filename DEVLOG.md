@@ -48,3 +48,39 @@ Format per cycle: **Planned / Developed / Issues found / Next steps**.
 - Full game state machine: play a card → resolve trick → evaluate task success/fail.
 - Win condition (all tasks done, ordering respected) + instant-fail lose condition.
 - Headless scripted-mission tests: one to success, one to failure.
+
+---
+
+## Cycle 2 — Tasks + win/lose state machine
+**Date:** 2026-06-06
+
+### Planned (≤5 goals)
+1. Task model with the four ordering constraints (none / relative / absolute / last).
+2. Mission model (objective set for one game).
+3. Full game reducer: `createGame`, `legalMovesFor`, `playCard` (immutable).
+4. Win (all tasks done, ordering respected) + instant-fail lose detection.
+5. Headless scripted-mission tests covering success and each failure mode.
+
+### Developed
+- `tasks.ts` — `TaskConstraint` union, `MissionTask`, runtime `TaskState`,
+  `completionSortKey` (resolves multiple same-trick completions in constraint order).
+- `game.ts` — `Mission`, `GameState`, `createGame()` (deals + instantiates tasks),
+  `legalMovesFor()`, `playCard()` (validates turn + legality, immutable via
+  `structuredClone`), `resolveCompletedTrick()` with: wrong-capture fail, ordered
+  completion + `checkOrdering` (absolute slot, relative sequence, last-only), stranded
+  absolute-slot detection, win-on-all-done, out-of-cards fail.
+- `game.test.ts` — **14 tests**: win/lose basics, trump capture, all four constraint
+  kinds (pass + violation), turn enforcement, illegal/out-of-turn throws, immutability.
+
+### Issues found
+- None blocking. Note: within-trick multi-completion ordering uses a heuristic sort —
+  adequate for current missions; revisit if a mission needs two ordered tasks to resolve
+  in the *same* trick with conflicting requirements (rare). Logged for later.
+
+### Verification
+- `npm test` → **29/29 passing** (15 engine + 14 game). `npm run typecheck` → clean.
+
+### Next steps (Cycle 3)
+- `server/` workspace: Express static host + Socket.IO.
+- Rooms with short join codes; join-with-name; lobby; start game.
+- Per-seat private state projection (never leak other players' hands).
