@@ -84,3 +84,23 @@ export function sortHand(hand: readonly Card[]): Card[] {
 export function isColorSuit(suit: Suit): suit is ColorSuit {
   return suit !== TRUMP_SUIT;
 }
+
+/** What a sonar signal can truthfully say about a card. */
+export type SonarPosition = "highest" | "only" | "lowest";
+
+/**
+ * The truthful sonar position of `card` within `hand`, or null if it can't be
+ * signalled (a submarine, not held, or a "middle" card of its colour).
+ */
+export function sonarPosition(hand: readonly Card[], card: Card): SonarPosition | null {
+  if (card.suit === TRUMP_SUIT) return null;
+  const sameColor = hand.filter((c) => c.suit === card.suit);
+  if (!sameColor.some((c) => cardsEqual(c, card))) return null;
+  if (sameColor.length === 1) return "only";
+  const values = sameColor.map((c) => c.value);
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  if (card.value === max) return "highest";
+  if (card.value === min) return "lowest";
+  return null;
+}

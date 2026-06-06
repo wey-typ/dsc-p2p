@@ -225,6 +225,11 @@ button { font-family: inherit; }
 .player-chip.self .pc-name { color: var(--gold); }
 .pc-name { display: block; font-weight: 700; font-size: 0.9rem; white-space: nowrap; }
 .pc-meta { display: block; font-size: 0.72rem; color: var(--foam-dim); }
+.pc-signal { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+.pc-signal-pos { font-size: 0.62rem; color: var(--gold); font-weight: 700; }
+
+.hand-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.sonar-spent { font-size: 0.72rem; color: var(--foam-dim); }
 
 .tasks, .trick-area, .hand-area {
   background: rgba(4, 20, 31, 0.4);

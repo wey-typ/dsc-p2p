@@ -247,3 +247,43 @@ Format per cycle: **Planned / Developed / Issues found / Next steps**.
 ### Next steps (Cycle 7)
 - Sonar communication (once-per-mission highest/only/lowest reveal) + distress signal
   (pass one card before play). Engine + protocol + UI.
+
+---
+
+## Cycle 7 — Sonar communication
+**Date:** 2026-06-06
+(Scope: sonar only; **distress signal deferred to backlog** to keep the cycle focused.)
+
+### Planned (≤5 goals)
+1. Engine: communication state + `communicate()` with truthful-position validation +
+   `sonarPosition` helper.
+2. View projection includes communications + `youCanCommunicate`.
+3. Protocol event + server handler.
+4. Client sonar UI + crew-signal display.
+5. Tests (engine + helper).
+
+### Developed
+- `shared/cards.ts` — `sonarPosition(hand, card)` → highest/only/lowest/null (rejects
+  submarines, middles, not-held).
+- `shared/game.ts` — `Communication` type, `communications`/`sonarUsed` on `GameState`,
+  `canCommunicate()` (token unspent + between tricks), `communicate()` (derives truthful
+  position, immutable, throws on misuse).
+- `shared/view.ts` — view carries `communications`, `sonarUsed`, `youCanCommunicate`.
+- `shared/protocol.ts` — `GameCommunicate` event + `CommunicatePayload`.
+- `server` — `RoomManager.communicate()` + handler (rebroadcasts so all see the signal).
+- `client` — Game sonar mode (📡 button; tap a highest/only/lowest card to signal,
+  middles disabled), per-seat signal shown on player chips, "used" indicator. New CSS.
+- Tests: `shared/comm.test.ts` — **5 tests** (position classification; record+spend;
+  no second signal; reject middle/submarine; not mid-trick).
+
+### Issues found
+- Strict typecheck flagged the older `game.test.ts` helper missing the two new state
+  fields (tests still ran since esbuild skips types). **Fixed** the helper.
+
+### Verification
+- `npm test` → **56/56 passing**. typecheck (both) clean. client builds.
+
+### Next steps (Cycle 8)
+- Curated mission set: a sequence with rising task counts AND ordering constraints
+  (relative/absolute/last) so difficulty actually escalates; level setup/reset uses it.
+- (Backlog) distress signal; per-player task selection in lobby.

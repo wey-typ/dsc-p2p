@@ -1,6 +1,6 @@
 import type { Card, Trick } from "./types.js";
 import type { TaskState } from "./tasks.js";
-import { type GameState, type GamePhase, legalMovesFor } from "./game.js";
+import { type GameState, type GamePhase, type Communication, legalMovesFor, canCommunicate } from "./game.js";
 import { sortHand } from "./cards.js";
 
 /** Public info about a seat (no private hand contents). */
@@ -34,6 +34,12 @@ export interface PlayerView {
   readonly trick: Trick;
   /** Tasks are public to the whole crew. */
   readonly tasks: TaskState[];
+  /** Sonar reveals made this mission (public). */
+  readonly communications: Communication[];
+  /** Whether each seat has spent its sonar token. */
+  readonly sonarUsed: boolean[];
+  /** Whether YOU may make a sonar signal right now. */
+  readonly youCanCommunicate: boolean;
 }
 
 /** Project the full game state down to what `seat` is allowed to see. */
@@ -58,5 +64,8 @@ export function projectForSeat(state: GameState, seat: number): PlayerView {
     legalMoves: legalMovesFor(state, seat),
     trick: state.trick,
     tasks: state.tasks,
+    communications: state.communications,
+    sonarUsed: state.sonarUsed,
+    youCanCommunicate: canCommunicate(state, seat),
   };
 }

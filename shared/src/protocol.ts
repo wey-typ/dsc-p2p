@@ -41,6 +41,7 @@ export const EV = {
   GamePause: "game:pause",
   GameResume: "game:resume",
   GameEnd: "game:end",
+  GameCommunicate: "game:communicate",
   // server -> client
   RoomState: "room:state",
   GameView: "game:view",
@@ -61,6 +62,9 @@ export interface StartPayload {
   taskCount?: number;
 }
 export interface PlayPayload {
+  card: Card;
+}
+export interface CommunicatePayload {
   card: Card;
 }
 

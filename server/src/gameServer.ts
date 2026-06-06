@@ -11,6 +11,7 @@ import {
   type JoinPayload,
   type StartPayload,
   type PlayPayload,
+  type CommunicatePayload,
   type JoinAck,
 } from "@dsc/shared";
 import { RoomManager, type Room } from "./rooms.js";
@@ -124,6 +125,15 @@ export function createGameServer(seed?: number, store?: CampaignStore | null): G
       const m = membership.get(socket.id);
       if (!m) return;
       const res = rooms.play(m.code, m.playerId, payload.card);
+      if ("error" in res) return socket.emit(EV.ErrorMsg, { message: res.error });
+      const room = rooms.getRoom(m.code);
+      if (room) broadcastRoom(room);
+    });
+
+    socket.on(EV.GameCommunicate, (payload: CommunicatePayload) => {
+      const m = membership.get(socket.id);
+      if (!m) return;
+      const res = rooms.communicate(m.code, m.playerId, payload.card);
       if ("error" in res) return socket.emit(EV.ErrorMsg, { message: res.error });
       const room = rooms.getRoom(m.code);
       if (room) broadcastRoom(room);

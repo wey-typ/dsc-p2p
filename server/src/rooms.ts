@@ -7,6 +7,7 @@ import {
   type Card,
   createGame,
   playCard,
+  communicate,
   buildSimpleMission,
   mulberry32,
   MIN_PLAYERS,
@@ -213,6 +214,20 @@ export class RoomManager {
       this.persist(room);
     }
     return { ok: true };
+  }
+
+  communicate(code: string, playerId: string, card: Card): { ok: true } | { error: string } {
+    const room = this.getRoom(code);
+    if (!room || !room.game) return { error: "No active game." };
+    if (room.paused) return { error: "Game is paused." };
+    const player = room.players.find((p) => p.id === playerId);
+    if (!player) return { error: "You are not in this room." };
+    try {
+      room.game = communicate(room.game, player.seat, card);
+      return { ok: true };
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : "Cannot communicate." };
+    }
   }
 
   private persist(room: Room): void {

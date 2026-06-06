@@ -23,6 +23,7 @@ interface GameContextValue {
   resume: () => void;
   endGame: () => void;
   play: (card: Card) => void;
+  communicate: (card: Card) => void;
   leave: () => void;
 }
 
@@ -86,6 +87,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         s().emit(EV.GameEnd, {});
       },
       play: (card) => s().emit(EV.GamePlay, { card }),
+      communicate: (card) => s().emit(EV.GameCommunicate, { card }),
       leave: () => {
         s().emit(EV.RoomLeave, {});
         setRoom(null);

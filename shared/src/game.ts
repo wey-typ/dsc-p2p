@@ -1,6 +1,13 @@
 import { type Card, type Player, type Trick } from "./types.js";
-import { cardsEqual, deal, cardId } from "./cards.js";
+import { cardsEqual, deal, cardId, sonarPosition, type SonarPosition } from "./cards.js";
 import { legalMoves, isLegalPlay, trickWinner } from "./trick.js";
+
+/** A sonar reveal: a face-up card marked as the seat's highest/only/lowest of its colour. */
+export interface Communication {
+  readonly seat: number;
+  readonly card: Card;
+  readonly position: SonarPosition;
+}
 import {
   type MissionTask,
   type TaskState,
@@ -33,6 +40,10 @@ export interface GameState {
   completedCount: number;
   phase: GamePhase;
   failReason?: string;
+  /** Sonar reveals made this mission (public to all). */
+  communications: Communication[];
+  /** Whether each seat has spent its single sonar token. */
+  sonarUsed: boolean[];
 }
 
 /**
@@ -62,7 +73,36 @@ export function createGame(
     trickNumber: 0,
     completedCount: 0,
     phase: "playing",
+    communications: [],
+    sonarUsed: new Array(players.length).fill(false),
   };
+}
+
+/** Whether `seat` may make a sonar signal right now (token unspent, between tricks). */
+export function canCommunicate(state: GameState, seat: number): boolean {
+  return (
+    state.phase === "playing" &&
+    !state.sonarUsed[seat] &&
+    state.trick.plays.length === 0
+  );
+}
+
+/**
+ * Make a sonar signal: reveal `card` as this seat's highest/only/lowest of its colour.
+ * Position is derived truthfully from the hand. Throws if it isn't allowed.
+ */
+export function communicate(state: GameState, seat: number, card: Card): GameState {
+  if (!canCommunicate(state, seat)) {
+    throw new Error("Cannot communicate right now");
+  }
+  const position = sonarPosition(state.hands[seat] ?? [], card);
+  if (position === null) {
+    throw new Error("That card cannot be signalled (submarine, not held, or a middle card)");
+  }
+  const next: GameState = structuredClone(state);
+  next.communications.push({ seat, card, position });
+  next.sonarUsed[seat] = true;
+  return next;
 }
 
 /** Legal cards the given seat may currently play (empty if it's not their turn). */

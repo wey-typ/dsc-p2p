@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { useGame } from "../state";
 import { CardView } from "../components/CardView";
-import type { Card, TaskState } from "@dsc/shared";
+import { sonarPosition, type Card, type TaskState, type Communication } from "@dsc/shared";
 
 function sameCard(a: Card, b: Card) {
   return a.suit === b.suit && a.value === b.value;
 }
+
+const POSITION_LABEL = { highest: "▲ highest", only: "● only", lowest: "▼ lowest" } as const;
 
 function constraintLabel(t: TaskState): string | null {
   switch (t.constraint.kind) {
@@ -20,14 +23,32 @@ function constraintLabel(t: TaskState): string | null {
 }
 
 export function Game() {
-  const { view, room, play, startGame, endGame, pause, resume, leave, youId } = useGame();
+  const { view, room, play, communicate, startGame, endGame, pause, resume, leave, youId } = useGame();
   if (!view || !room) return null;
+
+  const [sonarMode, setSonarMode] = useState(false);
 
   const paused = room.paused && view.phase === "playing";
   const yourTurn = view.turn === view.youSeat && view.phase === "playing" && !paused;
   const isHost = room.hostId === youId;
   const legal = (card: Card) => view.legalMoves.some((c) => sameCard(c, card));
   const nameOf = (seat: number) => view.players[seat]?.name ?? `Seat ${seat}`;
+  const signalFor = (seat: number): Communication | undefined =>
+    view.communications.find((c) => c.seat === seat);
+
+  const canSonar = view.youCanCommunicate && !paused;
+  if (sonarMode && !canSonar) setSonarMode(false);
+
+  function onCardTap(card: Card) {
+    if (sonarMode) {
+      if (sonarPosition(view!.hand, card)) {
+        communicate(card);
+        setSonarMode(false);
+      }
+      return;
+    }
+    if (yourTurn && legal(card)) play(card);
+  }
 
   return (
     <div className="screen game">
@@ -64,6 +85,12 @@ export function Game() {
               {p.seat === view.commander ? "⚓ " : ""}
               {view.handCounts[p.seat]} cards
             </span>
+            {signalFor(p.seat) && (
+              <span className="pc-signal">
+                <CardView card={signalFor(p.seat)!.card} small />
+                <span className="pc-signal-pos">{POSITION_LABEL[signalFor(p.seat)!.position]}</span>
+              </span>
+            )}
           </div>
         ))}
       </div>
@@ -116,16 +143,36 @@ export function Game() {
 
       {/* Your hand */}
       <div className="hand-area">
-        <div className="section-label">Your hand</div>
+        <div className="hand-head">
+          <span className="section-label">
+            {sonarMode ? "Sonar — tap your highest / only / lowest card" : "Your hand"}
+          </span>
+          {canSonar && (
+            <button
+              className={`btn chip ${sonarMode ? "danger" : ""}`}
+              onClick={() => setSonarMode((m) => !m)}
+            >
+              {sonarMode ? "Cancel" : "📡 Sonar"}
+            </button>
+          )}
+          {!canSonar && view.sonarUsed[view.youSeat] && (
+            <span className="sonar-spent">📡 used</span>
+          )}
+        </div>
         <div className="hand">
-          {view.hand.map((card) => (
-            <CardView
-              key={`${card.suit}-${card.value}`}
-              card={card}
-              onClick={yourTurn && legal(card) ? () => play(card) : undefined}
-              disabled={view.phase !== "playing" || !yourTurn || !legal(card)}
-            />
-          ))}
+          {view.hand.map((card) => {
+            const sonarOk = sonarMode && sonarPosition(view.hand, card) !== null;
+            const playOk = !sonarMode && yourTurn && legal(card);
+            return (
+              <CardView
+                key={`${card.suit}-${card.value}`}
+                card={card}
+                onClick={sonarOk || playOk ? () => onCardTap(card) : undefined}
+                disabled={sonarMode ? !sonarOk : view.phase !== "playing" || !yourTurn || !legal(card)}
+                selected={sonarOk}
+              />
+            );
+          })}
         </div>
       </div>
 
