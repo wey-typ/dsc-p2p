@@ -8,7 +8,8 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "train": "tsx src/train.ts",
-    "report": "tsx src/report.ts"
+    "report": "tsx src/report.ts",
+    "winreport": "tsx src/winreport.ts"
   },
   "dependencies": {
     "@dsc/shared": "*",

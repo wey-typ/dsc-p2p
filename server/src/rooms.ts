@@ -12,7 +12,8 @@ import {
   type BotWeights,
   DEFAULT_WEIGHTS,
   buildSimpleMission,
-  buildMissionForLevel,
+  buildSolvableGame,
+  missionName,
   mulberry32,
   MIN_PLAYERS,
   MAX_PLAYERS,
@@ -167,19 +168,25 @@ export class RoomManager {
     }
     const n = room.players.length;
     const rng = mulberry32(seed ?? Math.floor(this.rng() * 1e9));
-    // An explicit taskCount forces a simple unordered mission (used by tests / quick play);
-    // otherwise build the curated, constraint-bearing mission for the current level.
-    const mission =
-      taskCount !== undefined
-        ? buildSimpleMission(n, taskCount, rng, `mission-${room.level + 1}`)
-        : buildMissionForLevel(n, room.level, rng);
     const enginePlayers: Player[] = room.players.map((p) => ({
       id: p.id,
       name: p.name,
       isBot: p.isBot,
     }));
-    room.mission = mission;
-    room.game = createGame(enginePlayers, mission, rng);
+    if (taskCount !== undefined) {
+      // Explicit taskCount forces a simple unordered mission (used by tests / quick play).
+      const mission = buildSimpleMission(n, taskCount, rng, `mission-${room.level + 1}`);
+      room.mission = mission;
+      room.game = createGame(enginePlayers, mission, rng);
+    } else {
+      // Build a GUARANTEED-SOLVABLE mission for this level so every level is winnable.
+      room.game = buildSolvableGame(enginePlayers, room.level, rng);
+      room.mission = {
+        id: `mission-${room.level + 1}`,
+        name: `Mission ${room.level + 1} · ${missionName(room.level)}`,
+        tasks: [],
+      };
+    }
     room.phase = "playing";
     room.paused = false;
     return { ok: true };

@@ -19,7 +19,8 @@
     "build:client": "npm run build -w @dsc/client",
     "play": "npm run build:client && npm start -w @dsc/server",
     "train-bots": "npm run train -w @dsc/server",
-    "bot-report": "npm run report -w @dsc/server"
+    "bot-report": "npm run report -w @dsc/server",
+    "win-report": "npm run winreport -w @dsc/server"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

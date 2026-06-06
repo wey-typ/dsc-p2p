@@ -74,6 +74,16 @@ export function createGame(
   rng: () => number
 ): GameState {
   const { hands, commander } = deal(players.length, rng);
+  return makeGameState(players, hands, commander, mission);
+}
+
+/** Build a game state from explicit hands (used by the solvable-mission generator). */
+export function makeGameState(
+  players: Player[],
+  hands: Card[][],
+  commander: number,
+  mission: Mission
+): GameState {
   const tasks: TaskState[] = mission.tasks.map((t, i) => ({
     id: `task-${i}-${cardId(t.card)}`,
     card: t.card,
@@ -83,7 +93,7 @@ export function createGame(
   }));
   return {
     players,
-    hands,
+    hands: hands.map((h) => h.slice()),
     tasks,
     commander,
     trick: { leader: commander, plays: [] },

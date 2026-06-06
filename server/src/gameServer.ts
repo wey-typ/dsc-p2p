@@ -75,6 +75,15 @@ export function createGameServer(
     }
     res.sendFile(file);
   });
+  app.get("/win-report", (_req, res) => {
+    const file = path.resolve(__dirname, "../../data/reports/win-report.html");
+    if (!existsSync(file)) {
+      return res
+        .status(404)
+        .send("<p>No win report yet. Run <code>npm run win-report</code> first.</p>");
+    }
+    res.sendFile(file);
+  });
 
   const httpServer = createServer(app);
   const io = new Server(httpServer, { cors: { origin: "*" } });

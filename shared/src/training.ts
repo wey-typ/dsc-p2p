@@ -3,6 +3,7 @@ import { type BotWeights, DEFAULT_WEIGHTS, chooseBotPlay } from "./bots.js";
 import { type GameState, createGame, playCard } from "./game.js";
 import { buildMissionForLevel } from "./missions.js";
 import { mulberry32 } from "./rng.js";
+import { solveGame } from "./solver.js";
 
 /** Play one full bot-only game with the given weights and return the FINAL state. */
 export function simulateBotGame(
@@ -36,7 +37,7 @@ export interface EvalOptions {
 }
 
 export const DEFAULT_EVAL: EvalOptions = {
-  players: [3, 4],
+  players: [2, 3, 4], // includes 2- and 3-player games
   levels: [0, 1, 2],
   gamesPerCell: 12,
   seedBase: 1000,
@@ -49,6 +50,24 @@ function botPlayers(n: number): Player[] {
 /** Play one full bot-only game with the given weights; return true on a win. */
 export function playBotGame(n: number, level: number, seed: number, weights: BotWeights): boolean {
   return simulateBotGame(n, level, seed, weights).phase === "won";
+}
+
+/**
+ * Solve a deal with the full-information solver and replay the winning line to produce the
+ * final (won) state — with `resolvedTricks` for the report. Returns null if unsolvable.
+ */
+export function solveAndReplay(
+  n: number,
+  level: number,
+  seed: number,
+  nodes = 60000
+): GameState | null {
+  const start = createGame(botPlayers(n), buildMissionForLevel(n, level, mulberry32(seed)), mulberry32(seed + 7));
+  const line = solveGame(start, { nodes });
+  if (!line) return null;
+  let s = start;
+  for (const card of line) s = playCard(s, s.turn, card);
+  return s;
 }
 
 /** Win rate of `weights` across the evaluation suite (deterministic for fixed seeds). */

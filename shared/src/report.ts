@@ -1,8 +1,12 @@
-import { type BotWeights, DEFAULT_WEIGHTS } from "./bots.js";
-import { type ResolvedTrick } from "./game.js";
+import { type BotWeights, DEFAULT_WEIGHTS, chooseBotPlay } from "./bots.js";
+import { type ResolvedTrick, type GameState, playCard } from "./game.js";
 import type { TaskState } from "./tasks.js";
 import { missionName } from "./missions.js";
 import { simulateBotGame } from "./training.js";
+import { buildSolvableGame } from "./solvable.js";
+import { solveGame } from "./solver.js";
+import { mulberry32 } from "./rng.js";
+import type { Player } from "./types.js";
 
 /** One bot game within the campaign report. */
 export interface LevelGameRecord {
@@ -100,5 +104,148 @@ export function simulateBotCampaign(opts: CampaignOptions = {}): BotCampaignRepo
     games,
     summary,
     totals: { games: games.length, wins, failures: games.length - wins },
+  };
+}
+
+// ============================================================
+// Win-every-level campaign: bots must WIN each level before advancing. Try the heuristic
+// first; after a few failed tries, REVISE the strategy to the full-information solver
+// (which wins guaranteed-solvable instances). Runs across player counts.
+// ============================================================
+
+export interface WinLevelResult {
+  playerCount: number;
+  level: number;
+  missionName: string;
+  triesUsed: number;
+  heuristicFailures: number;
+  strategy: "heuristic" | "solver" | "none";
+  won: boolean;
+  tricks: ResolvedTrick[];
+  tasks: TaskState[];
+  tasksCleared: number;
+  taskTotal: number;
+}
+
+export interface WinCampaignReport {
+  playerCounts: number[];
+  levels: number[];
+  reviseAfter: number;
+  maxTries: number;
+  results: WinLevelResult[];
+  totals: { cells: number; won: number; viaHeuristic: number; viaSolver: number; unsolved: number };
+}
+
+export interface WinCampaignOptions {
+  playerCounts?: number[];
+  levels?: number[];
+  weights?: BotWeights;
+  reviseAfter?: number;
+  maxTries?: number;
+  solverNodes?: number;
+  seedBase?: number;
+}
+
+function bots(n: number): Player[] {
+  return Array.from({ length: n }, (_, i) => ({ id: `b${i}`, name: `Bot ${i + 1}`, isBot: true }));
+}
+
+function playHeuristic(start: GameState, weights: BotWeights): GameState {
+  let s = start;
+  for (let i = 0; i < 80 && s.phase === "playing"; i++) {
+    s = playCard(s, s.turn, chooseBotPlay(s, s.turn, weights));
+  }
+  return s;
+}
+
+function solveAndReplayState(start: GameState, nodes: number): GameState | null {
+  const line = solveGame(start, { nodes });
+  if (!line) return null;
+  let s = start;
+  for (const card of line) s = playCard(s, s.turn, card);
+  return s;
+}
+
+function recordOf(pc: number, level: number, final: GameState, tries: number, fails: number, strategy: WinLevelResult["strategy"]): WinLevelResult {
+  return {
+    playerCount: pc,
+    level,
+    missionName: missionName(level),
+    triesUsed: tries,
+    heuristicFailures: fails,
+    strategy,
+    won: final.phase === "won",
+    tricks: final.resolvedTricks ?? [],
+    tasks: final.tasks,
+    tasksCleared: final.tasks.filter((t) => t.status === "done").length,
+    taskTotal: final.tasks.length,
+  };
+}
+
+/**
+ * For each player count and level, keep trying (on guaranteed-solvable missions) until the
+ * bots WIN, then advance. Heuristic first; after `reviseAfter` failures, switch to the
+ * solver. Deterministic for a fixed seedBase.
+ */
+export function simulateWinCampaign(opts: WinCampaignOptions = {}): WinCampaignReport {
+  const playerCounts = opts.playerCounts ?? [2, 3];
+  const levels = opts.levels ?? [0, 1, 2, 3, 4, 5, 6, 7, 8];
+  const weights = opts.weights ?? DEFAULT_WEIGHTS;
+  const reviseAfter = opts.reviseAfter ?? 5;
+  const maxTries = opts.maxTries ?? 60;
+  // Keep the budget modest: hard-to-search (but solvable) instances fail fast so we re-deal
+  // to a quickly-solvable one — every level has those, so the crew always wins eventually.
+  const solverNodes = opts.solverNodes ?? 45000;
+  const seedBase = opts.seedBase ?? 424242;
+
+  const results: WinLevelResult[] = [];
+  for (const pc of playerCounts) {
+    for (const level of levels) {
+      let tries = 0;
+      let fails = 0;
+      let strategy: WinLevelResult["strategy"] = "heuristic";
+      let final: GameState | null = null;
+      let lastSeen: GameState | null = null;
+      while (tries < maxTries) {
+        tries++;
+        const seed = seedBase + pc * 1_000_003 + level * 9973 + tries * 31;
+        const start = buildSolvableGame(bots(pc), level, mulberry32(seed));
+        if (strategy === "heuristic") {
+          const end = playHeuristic(start, weights);
+          lastSeen = end;
+          if (end.phase === "won") {
+            final = end;
+            break;
+          }
+          fails++;
+          if (fails >= reviseAfter) strategy = "solver";
+        } else {
+          const end = solveAndReplayState(start, solverNodes);
+          if (end) {
+            final = end;
+            break;
+          }
+          // solvable instance exceeded the node budget — re-deal a fresh one
+        }
+      }
+      const chosen = final ?? lastSeen!;
+      results.push(recordOf(pc, level, chosen, tries, fails, final ? strategy : "none"));
+    }
+  }
+
+  const won = results.filter((r) => r.won).length;
+  return {
+    playerCounts,
+    levels,
+    reviseAfter,
+    maxTries,
+    results,
+    totals: {
+      cells: results.length,
+      won,
+      viaHeuristic: results.filter((r) => r.won && r.strategy === "heuristic").length,
+      viaSolver: results.filter((r) => r.won && r.strategy === "solver").length,
+      unsolved: results.length - won,
+    },
   };
 }

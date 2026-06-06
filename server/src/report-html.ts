@@ -1,4 +1,10 @@
-import type { BotCampaignReport, LevelGameRecord, Card } from "@dsc/shared";
+import type {
+  BotCampaignReport,
+  LevelGameRecord,
+  WinCampaignReport,
+  WinLevelResult,
+  Card,
+} from "@dsc/shared";
 
 const SUIT: Record<Card["suit"], { bg: string; ltr: string }> = {
   blue: { bg: "#2f7fd1", ltr: "C" },
@@ -132,5 +138,98 @@ export function buildReportHtml(report: BotCampaignReport, generatedAt: string):
       <span class="chip" style="background:#1b2733">★</span> sub.</div>
     ${levelSections}
   </div>
+</body></html>`;
+}
+
+/** A trick table for one resolved game (shared by both report styles). */
+function trickTable(tricks: WinLevelResult["tricks"], names: string[]): string {
+  const rows = tricks
+    .map((t, i) => {
+      const plays = t.plays
+        .map((p) => `<td>${chip(p.card)} <small>${names[p.seat] ?? "?"}</small></td>`)
+        .join("");
+      return `<tr><td class="tn">${i + 1}</td>${plays}<td class="win">🏆 ${names[t.winner] ?? "?"}</td></tr>`;
+    })
+    .join("");
+  return `<table class="tricks"><tbody>${rows || '<tr><td>No tricks.</td></tr>'}</tbody></table>`;
+}
+
+function winBlock(r: WinLevelResult, names: string[]): string {
+  const badge = r.won ? `<span class="b won">WON</span>` : `<span class="b lost">UNSOLVED</span>`;
+  const how =
+    r.strategy === "solver"
+      ? `revised → <b>solver</b>`
+      : r.strategy === "heuristic"
+        ? `<b>heuristic</b>`
+        : `—`;
+  return `
+  <details class="game ${r.won ? "won" : "lost"}">
+    <summary>${badge} Level ${r.level + 1} · ${r.missionName}
+      <small>(${how}; ${r.triesUsed} tries, ${r.heuristicFailures} heuristic fails; ${r.tasksCleared}/${r.taskTotal} tasks)</small>
+    </summary>
+    ${trickTable(r.tricks, names)}
+  </details>`;
+}
+
+/** Report for the "win every level" campaign (per player count). */
+export function buildWinReportHtml(report: WinCampaignReport, generatedAt: string): string {
+  const t = report.totals;
+  const sections = report.playerCounts
+    .map((pc) => {
+      const names = Array.from({ length: pc }, (_, i) => `Bot ${i + 1}`);
+      const rows = report.results
+        .filter((r) => r.playerCount === pc)
+        .sort((a, b) => a.level - b.level);
+      const summary = rows
+        .map(
+          (r) =>
+            `<tr><td>L${r.level + 1}</td><td>${r.missionName}</td>
+             <td>${r.won ? "✅" : "❌"}</td><td>${r.strategy}</td><td>${r.triesUsed}</td></tr>`
+        )
+        .join("");
+      const blocks = rows.map((r) => winBlock(r, names)).join("");
+      return `<div class="panel">
+        <h2 style="margin:0 0 8px;font-size:1.1rem">${pc} players</h2>
+        <table class="summary"><thead><tr><th>Lv</th><th>Mission</th><th>Won</th><th>How</th><th>Tries</th></tr></thead>
+          <tbody>${summary}</tbody></table>
+        <div class="meta" style="margin-top:8px">Trick-by-trick (tap to expand):</div>
+        ${blocks}
+      </div>`;
+    })
+    .join("");
+
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Deep Sea Crew — Win-Every-Level Report</title>
+<style>
+  :root{--gold:#f2c14e;--ok:#4fd1a5;--danger:#e7585b;--foam:#e9f6fb;--dim:#a9cdd9;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Trebuchet MS",Segoe UI,system-ui,sans-serif;color:var(--foam);
+    background:radial-gradient(120% 80% at 50% -10%,#1d6c8a,#0e4257 40%,#04141f);min-height:100vh;padding:18px}
+  h1{margin:0 0 4px;font-size:1.6rem}.meta{color:var(--dim);font-size:.85rem;margin-bottom:14px}
+  .panel{background:rgba(8,43,58,.7);border:1px solid rgba(169,205,217,.18);border-radius:14px;padding:14px;margin-bottom:16px}
+  .kpis{display:flex;gap:10px;flex-wrap:wrap}.kpi{flex:1;min-width:90px;background:rgba(4,20,31,.4);border-radius:12px;padding:10px;text-align:center}
+  .kpi b{display:block;font-size:1.5rem;color:var(--gold)}.kpi span{font-size:.66rem;color:var(--dim);text-transform:uppercase}
+  table{width:100%;border-collapse:collapse}
+  .summary td,.summary th{padding:6px 8px;border-bottom:1px solid rgba(169,205,217,.12);font-size:.85rem;text-align:left}
+  details.game{background:rgba(4,20,31,.4);border:1px solid rgba(169,205,217,.12);border-radius:10px;margin:6px 0;padding:6px 10px}
+  details.game.won{border-left:4px solid var(--ok)}details.game.lost{border-left:4px solid var(--danger)}
+  summary{cursor:pointer;font-size:.9rem}
+  .b{font-size:.62rem;font-weight:800;padding:2px 6px;border-radius:6px;margin-right:6px}
+  .b.won{background:rgba(79,209,165,.2);color:var(--ok)}.b.lost{background:rgba(231,88,91,.2);color:var(--danger)}
+  table.tricks{margin-top:6px}table.tricks td{padding:3px 5px;font-size:.78rem;border-bottom:1px solid rgba(169,205,217,.07)}
+  table.tricks .tn{color:var(--dim)}table.tricks .win{color:var(--gold)}
+  .chip{display:inline-block;min-width:1.7em;text-align:center;border-radius:5px;padding:1px 4px;font-weight:800;font-size:.72rem;color:#fff}
+  small{color:var(--dim)}
+</style></head><body>
+  <h1>🏆 Deep Sea Crew — Win-Every-Level Report</h1>
+  <div class="meta">players ${report.playerCounts.join(", ")} · levels 1–${report.levels.length} · revise after ${report.reviseAfter} tries · generated ${escape(generatedAt)}</div>
+  <div class="panel"><div class="kpis">
+    <div class="kpi"><b style="color:var(--ok)">${t.won}/${t.cells}</b><span>levels won</span></div>
+    <div class="kpi"><b>${t.viaHeuristic}</b><span>by heuristic</span></div>
+    <div class="kpi"><b>${t.viaSolver}</b><span>by solver</span></div>
+    <div class="kpi"><b style="color:${t.unsolved ? "var(--danger)" : "var(--ok)"}">${t.unsolved}</b><span>unsolved</span></div>
+  </div></div>
+  ${sections}
 </body></html>`;
 }
