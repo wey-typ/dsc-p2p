@@ -253,6 +253,17 @@ button { font-family: inherit; }
 .task-constraint { font-size: 0.62rem; color: var(--gold); }
 .task-check { position: absolute; top: 2px; right: 4px; color: var(--ok); font-weight: 800; }
 
+.tasks, .trick-area, .hand-area, .lasttrick-area {
+  /* shared surface look extended to the last-trick panel */
+}
+.lasttrick-area {
+  background: rgba(4, 20, 31, 0.4);
+  border: 1px solid rgba(242, 193, 78, 0.25);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+.lt-winner { color: var(--gold); }
+.trick-play.lt-won .trick-player { color: var(--gold); font-weight: 700; }
 .trick { display: flex; gap: 12px; min-height: 68px; align-items: center; justify-content: center; flex-wrap: wrap; }
 .trick-empty { color: var(--foam-dim); font-size: 0.85rem; }
 .trick-play { display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -305,6 +316,13 @@ button { font-family: inherit; }
 .help-list { margin: 0; padding-left: 18px; color: var(--foam-dim); font-size: 0.9rem; line-height: 1.55; }
 .help-list strong { color: var(--foam); }
 .help-card .btn.primary { margin-top: 18px; width: 100%; }
+.help-nutshell {
+  background: rgba(242, 193, 78, 0.12);
+  border: 1px solid rgba(242, 193, 78, 0.35);
+  border-radius: 12px; padding: 12px 14px; margin: 6px 0 10px;
+  font-size: 0.92rem; line-height: 1.5;
+}
+.help-nutshell strong { color: var(--gold); }
 .legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0; }
 .legend-item { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 0.7rem; color: var(--foam-dim); }
 .home-links { display: flex; gap: 18px; justify-content: center; }

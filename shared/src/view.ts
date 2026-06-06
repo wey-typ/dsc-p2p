@@ -32,6 +32,9 @@ export interface PlayerView {
   /** Cards you may legally play right now (empty if not your turn). */
   readonly legalMoves: Card[];
   readonly trick: Trick;
+  /** The most recently completed trick + its winner (for the "Last trick" panel). */
+  readonly lastTrick?: Trick;
+  readonly lastTrickWinner?: number;
   /** Tasks are public to the whole crew. */
   readonly tasks: TaskState[];
   /** Sonar reveals made this mission (public). */
@@ -63,6 +66,8 @@ export function projectForSeat(state: GameState, seat: number): PlayerView {
     hand: sortHand(state.hands[seat] ?? []),
     legalMoves: legalMovesFor(state, seat),
     trick: state.trick,
+    lastTrick: state.lastTrick,
+    lastTrickWinner: state.lastTrickWinner,
     tasks: state.tasks,
     communications: state.communications,
     sonarUsed: state.sonarUsed,

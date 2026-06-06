@@ -76,6 +76,14 @@ describe("win / lose basics", () => {
     expect(end.failReason).toMatch(/Out of cards/);
   });
 
+  it("records the completed trick + winner for display after it clears", () => {
+    const s = makeState([[B(5), G(1)], [B(3), G(2)], [G(9), G(8)]], [mkTask(B(8), 0, { kind: "none" }, 0)]);
+    const after = playTrick(s, [B(5), B(3), G(9)]); // seat0 wins blue with B(5)
+    expect(after.trick.plays).toHaveLength(0); // current trick cleared
+    expect(after.lastTrick?.plays.map((p) => p.card.value)).toEqual([5, 3, 9]);
+    expect(after.lastTrickWinner).toBe(0);
+  });
+
   it("a submarine trumps the led suit", () => {
     const s = makeState(
       [[B(9)], [{ suit: "sub", value: 1 }], [B(2)]],

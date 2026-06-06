@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useGame } from "../state";
 import { CardView } from "../components/CardView";
+import { HowToPlay } from "./HowToPlay";
 import { sonarPosition, type Card, type TaskState, type Communication } from "@dsc/shared";
 
 function sameCard(a: Card, b: Card) {
@@ -27,6 +28,7 @@ export function Game() {
   if (!view || !room) return null;
 
   const [sonarMode, setSonarMode] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const paused = room.paused && view.phase === "playing";
   const yourTurn = view.turn === view.youSeat && view.phase === "playing" && !paused;
@@ -59,16 +61,21 @@ export function Game() {
         <span className="game-mission">
           {room.campaignName} · Mission {room.level + 1}
         </span>
-        {isHost && view.phase === "playing" && (
-          <span className="game-controls">
-            {room.paused ? (
-              <button className="btn chip" onClick={resume}>▶ Resume</button>
-            ) : (
-              <button className="btn chip" onClick={pause}>⏸ Pause</button>
-            )}
-            <button className="btn chip danger" onClick={endGame}>■ End</button>
-          </span>
-        )}
+        <span className="game-controls">
+          <button className="btn chip" onClick={() => setShowHelp(true)} aria-label="How to play">
+            ? Help
+          </button>
+          {isHost && view.phase === "playing" && (
+            <>
+              {room.paused ? (
+                <button className="btn chip" onClick={resume}>▶ Resume</button>
+              ) : (
+                <button className="btn chip" onClick={pause}>⏸ Pause</button>
+              )}
+              <button className="btn chip danger" onClick={endGame}>■ End</button>
+            </>
+          )}
+        </span>
       </div>
 
       {/* Player strip */}
@@ -132,6 +139,30 @@ export function Game() {
           ))}
         </div>
       </div>
+
+      {/* Last completed trick (stays visible so you can see what everyone played) */}
+      {view.lastTrick && view.lastTrick.plays.length > 0 && (
+        <div className="lasttrick-area">
+          <div className="section-label">
+            Last trick — won by{" "}
+            <strong className="lt-winner">{nameOf(view.lastTrickWinner ?? -1)}</strong>
+          </div>
+          <div className="trick">
+            {view.lastTrick.plays.map((pl) => (
+              <div
+                key={`lt-${pl.seat}-${pl.card.suit}-${pl.card.value}`}
+                className={`trick-play ${pl.seat === view.lastTrickWinner ? "lt-won" : ""}`}
+              >
+                <CardView card={pl.card} small />
+                <span className="trick-player">
+                  {pl.seat === view.lastTrickWinner ? "🏆 " : ""}
+                  {nameOf(pl.seat)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Turn banner */}
       <div className={`turn-banner ${yourTurn ? "your-turn" : ""}`}>
@@ -225,6 +256,8 @@ export function Game() {
           </div>
         </div>
       )}
+
+      {showHelp && <HowToPlay onClose={() => setShowHelp(false)} />}
     </div>
   );
 }

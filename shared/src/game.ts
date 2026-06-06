@@ -49,6 +49,10 @@ export interface GameState {
    * began. Lets the final tricks of an uneven (3-player) deal resolve with fewer cards.
    */
   expectedTrickSize: number;
+  /** The most recently completed trick (kept for display after the table clears). */
+  lastTrick?: Trick;
+  /** Seat that won `lastTrick`. */
+  lastTrickWinner?: number;
 }
 
 /**
@@ -171,6 +175,9 @@ function resolveCompletedTrick(state: GameState): GameState {
   const winner = trickWinner(state.trick);
   const trickNo = state.trickNumber + 1;
   const cardsInTrick = state.trick.plays.map((p) => p.card);
+
+  // Remember the completed trick so the UI can show it after the table is cleared.
+  state = { ...state, lastTrick: state.trick, lastTrickWinner: winner };
 
   // Tasks whose target card was captured in this trick.
   const resolving = state.tasks.filter(

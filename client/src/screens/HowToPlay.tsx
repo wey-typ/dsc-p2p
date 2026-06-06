@@ -15,9 +15,15 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
       <div className="overlay-card help-card">
         <h2>How to dive 🤿</h2>
 
+        <div className="help-nutshell">
+          <strong>In one breath:</strong> it's a <em>team</em> game — you all win or lose
+          together. Each round, everyone plays one card; the highest wins the pile ("trick").
+          Your job: make sure the right teammate wins the piles that contain their
+          <strong> task cards</strong>. Win every task = mission complete.
+        </div>
+
         <p className="help-lead">
-          You and your crew win or lose <em>together</em>. Each mission gives the crew a
-          set of <strong>tasks</strong> — specific cards a specific diver must capture.
+          You can't tell anyone your cards — except once per mission with <strong>Sonar</strong>.
         </p>
 
         <h3>The suits</h3>
