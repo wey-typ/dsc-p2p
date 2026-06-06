@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { projectForSeat } from "@dsc/shared";
+import { projectForSeat, legalMovesFor } from "@dsc/shared";
 import { RoomManager, sanitizeName } from "./rooms.js";
 
 describe("RoomManager", () => {
@@ -78,6 +78,43 @@ describe("RoomManager", () => {
     const { room, player } = rm.createRoom("Only");
     rm.disconnect(room.code, player.id);
     expect(rm.getRoom(room.code)).toBeUndefined();
+  });
+
+  it("adds and removes bots in the lobby and fills a game", () => {
+    const rm = new RoomManager(11);
+    const { room } = rm.createRoom("Host");
+    expect(rm.addBot(room.code)).toEqual({ ok: true });
+    expect(rm.addBot(room.code)).toEqual({ ok: true });
+    expect(room.players.filter((p) => p.isBot)).toHaveLength(2);
+    expect(room.players.map((p) => p.seat)).toEqual([0, 1, 2]); // contiguous seats
+    expect(rm.removeBot(room.code)).toEqual({ ok: true });
+    expect(room.players.filter((p) => p.isBot)).toHaveLength(1);
+
+    // 1 human + 2 bots can start and bot turns auto-resolve via playBotTurn.
+    rm.addBot(room.code);
+    rm.startGame(room.code, 2, 5);
+    let guard = 0;
+    while (room.game!.phase === "playing" && guard++ < 200) {
+      if (rm.isBotTurn(room.code)) {
+        expect(rm.playBotTurn(room.code)).toBe(true);
+      } else {
+        // human seat: play a legal card
+        const seat = room.game!.turn;
+        const human = room.players.find((p) => p.seat === seat)!;
+        const legal = legalMovesFor(room.game!, seat);
+        rm.play(room.code, human.id, legal[0]!);
+      }
+    }
+    expect(["won", "lost"]).toContain(room.phase);
+  });
+
+  it("won't add bots once the game has started", () => {
+    const rm = new RoomManager(12);
+    const { room } = rm.createRoom("Host");
+    rm.addBot(room.code);
+    rm.addBot(room.code);
+    rm.startGame(room.code, 2, 1);
+    expect(rm.addBot(room.code)).toEqual({ error: "Can only add bots in the lobby." });
   });
 
   it("reassigns the host when the host disconnects", () => {

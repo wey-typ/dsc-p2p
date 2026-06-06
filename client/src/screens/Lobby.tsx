@@ -1,10 +1,12 @@
 import { useGame } from "../state";
 
 export function Lobby() {
-  const { room, youId, startGame, leave } = useGame();
+  const { room, youId, startGame, addBot, removeBot, leave } = useGame();
   if (!room) return null;
   const isHost = room.hostId === youId;
   const canStart = room.players.length >= room.minPlayers;
+  const botCount = room.players.filter((p) => p.isBot).length;
+  const roomFull = room.players.length >= room.maxPlayers;
 
   return (
     <div className="screen lobby">
@@ -31,6 +33,7 @@ export function Lobby() {
           <li key={p.id} className={p.connected ? "" : "offline"}>
             <span className="diver-dot" />
             <span className="diver-name">{p.name}</span>
+            {p.isBot && <span className="tag bot">bot</span>}
             {p.id === room.hostId && <span className="tag">host</span>}
             {p.id === youId && <span className="tag you">you</span>}
           </li>
@@ -42,6 +45,17 @@ export function Lobby() {
           </li>
         ))}
       </ul>
+
+      {isHost && (
+        <div className="bot-controls">
+          <button className="btn chip" disabled={roomFull} onClick={addBot}>
+            + Add bot
+          </button>
+          <button className="btn chip" disabled={botCount === 0} onClick={removeBot}>
+            − Remove bot
+          </button>
+        </div>
+      )}
 
       {isHost ? (
         <button className="btn primary big" disabled={!canStart} onClick={() => startGame()}>

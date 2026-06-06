@@ -152,6 +152,8 @@ button { font-family: inherit; }
 .diver-name { flex: 1; font-weight: 600; }
 .tag { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; background: rgba(233,246,251,0.12); padding: 3px 7px; border-radius: 999px; }
 .tag.you { background: var(--gold); color: #1a1205; }
+.tag.bot { background: rgba(79,209,165,0.2); color: var(--ok); }
+.bot-controls { display: flex; gap: 8px; justify-content: center; }
 
 /* ---- Campaign banner (lobby) ---- */
 .campaign-banner {

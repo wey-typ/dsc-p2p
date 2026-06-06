@@ -35,6 +35,8 @@ export const EV = {
   RoomCreate: "room:create",
   RoomJoin: "room:join",
   RoomLeave: "room:leave",
+  RoomAddBot: "room:addbot",
+  RoomRemoveBot: "room:removebot",
   GameStart: "game:start",
   GamePlay: "game:play",
   GameRestart: "game:restart",

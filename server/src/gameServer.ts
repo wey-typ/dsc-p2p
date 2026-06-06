@@ -75,7 +75,22 @@ export function createGameServer(seed?: number, store?: CampaignStore | null): G
     if (!room || room.hostId !== m.playerId) return;
     fn(m.code);
     const updated = rooms.getRoom(m.code);
-    if (updated) broadcastRoom(updated);
+    if (updated) {
+      broadcastRoom(updated);
+      scheduleBots(m.code);
+    }
+  }
+
+  /** While it's a bot's turn, play one move per ~700ms tick, broadcasting each step. */
+  function scheduleBots(code: string): void {
+    if (!rooms.isBotTurn(code)) return;
+    setTimeout(() => {
+      if (rooms.playBotTurn(code)) {
+        const room = rooms.getRoom(code);
+        if (room) broadcastRoom(room);
+        scheduleBots(code); // chain to the next bot turn, if any
+      }
+    }, 700);
   }
 
   function handleLeave(socketId: string): void {
@@ -114,7 +129,11 @@ export function createGameServer(seed?: number, store?: CampaignStore | null): G
       if ("error" in res) return socket.emit(EV.ErrorMsg, { message: res.error });
       const room = rooms.getRoom(m.code);
       if (room) broadcastRoom(room);
+      scheduleBots(m.code); // commander may be a bot
     });
+
+    socket.on(EV.RoomAddBot, () => hostAction(socket.id, (code) => rooms.addBot(code)));
+    socket.on(EV.RoomRemoveBot, () => hostAction(socket.id, (code) => rooms.removeBot(code)));
 
     socket.on(EV.GameRestart, () => hostAction(socket.id, (code) => rooms.restart(code)));
     socket.on(EV.GameEnd, () => hostAction(socket.id, (code) => rooms.endGame(code)));
@@ -128,6 +147,7 @@ export function createGameServer(seed?: number, store?: CampaignStore | null): G
       if ("error" in res) return socket.emit(EV.ErrorMsg, { message: res.error });
       const room = rooms.getRoom(m.code);
       if (room) broadcastRoom(room);
+      scheduleBots(m.code); // next seat may be a bot
     });
 
     socket.on(EV.GameCommunicate, (payload: CommunicatePayload) => {

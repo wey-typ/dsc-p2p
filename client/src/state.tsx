@@ -18,6 +18,8 @@ interface GameContextValue {
   createRoom: (name: string, crewName?: string) => Promise<JoinAck>;
   joinRoom: (code: string, name: string) => Promise<JoinAck>;
   startGame: (taskCount?: number) => void;
+  addBot: () => void;
+  removeBot: () => void;
   restart: () => void;
   pause: () => void;
   resume: () => void;
@@ -76,6 +78,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       createRoom: (name, crewName) => emitWithAck(EV.RoomCreate, { name, crewName }),
       joinRoom: (code, name) => emitWithAck(EV.RoomJoin, { code: code.toUpperCase(), name }),
       startGame: (taskCount) => s().emit(EV.GameStart, { taskCount }),
+      addBot: () => s().emit(EV.RoomAddBot, {}),
+      removeBot: () => s().emit(EV.RoomRemoveBot, {}),
       restart: () => {
         setView(null);
         s().emit(EV.GameRestart, {});

@@ -8,6 +8,7 @@ import {
   createGame,
   playCard,
   communicate,
+  chooseBotPlay,
   buildSimpleMission,
   buildMissionForLevel,
   mulberry32,
@@ -226,6 +227,55 @@ export class RoomManager {
       this.persist(room);
     }
     return { ok: true };
+  }
+
+  private static BOT_NAMES = ["Marlin", "Coral", "Finn", "Nessie", "Bubbles", "Kraken"];
+
+  addBot(code: string): { ok: true } | { error: string } {
+    const room = this.getRoom(code);
+    if (!room) return { error: "Room not found." };
+    if (room.phase !== "lobby") return { error: "Can only add bots in the lobby." };
+    if (room.players.length >= MAX_PLAYERS) return { error: "Room is full." };
+    const used = new Set(room.players.map((p) => p.name));
+    const base = RoomManager.BOT_NAMES.find((n) => !used.has(`${n} (bot)`)) ?? "Diverbot";
+    room.players.push({
+      id: this.nextId("bot"),
+      name: `${base} (bot)`,
+      seat: room.players.length,
+      connected: true,
+      isBot: true,
+    });
+    return { ok: true };
+  }
+
+  removeBot(code: string): { ok: true } | { error: string } {
+    const room = this.getRoom(code);
+    if (!room) return { error: "Room not found." };
+    if (room.phase !== "lobby") return { error: "Can only remove bots in the lobby." };
+    const idx = [...room.players].reverse().findIndex((p) => p.isBot);
+    if (idx === -1) return { error: "No bots to remove." };
+    room.players.splice(room.players.length - 1 - idx, 1);
+    room.players.forEach((p, i) => (p.seat = i)); // re-seat
+    return { ok: true };
+  }
+
+  /** True if it's currently a bot seat's turn in an active, unpaused game. */
+  isBotTurn(code: string): boolean {
+    const room = this.getRoom(code);
+    if (!room || !room.game || room.paused || room.game.phase !== "playing") return false;
+    const seatPlayer = room.players.find((p) => p.seat === room.game!.turn);
+    return seatPlayer?.isBot === true;
+  }
+
+  /** Play one bot move for the current turn (if it is a bot). Returns whether it acted. */
+  playBotTurn(code: string): boolean {
+    const room = this.getRoom(code);
+    if (!room || !room.game || !this.isBotTurn(code)) return false;
+    const seat = room.game.turn;
+    const card = chooseBotPlay(room.game, seat);
+    const player = room.players.find((p) => p.seat === seat)!;
+    const res = this.play(code, player.id, card);
+    return "ok" in res;
   }
 
   communicate(code: string, playerId: string, card: Card): { ok: true } | { error: string } {

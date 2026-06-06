@@ -403,3 +403,41 @@ of truth. Image generation noted as optional backlog.)
 
 ### Next steps (Cycle 11, optional "plus")
 - AI/bot crewmates (engine is already bot-agnostic) to fill seats / enable solo testing.
+
+---
+
+## Cycle 11 — Bot crewmates (optional "plus")
+**Date:** 2026-06-06
+
+### Planned (≤5 goals)
+1. `chooseBotPlay` heuristic (safe by default, opportunistic on tasks).
+2. RoomManager add/remove bot + `isBotTurn`/`playBotTurn`.
+3. Server auto-play scheduling + add/remove handlers.
+4. Lobby UI to add/remove bots + bot tags.
+5. Tests (bot legal-move sweep + lobby behavior).
+
+### Developed
+- `shared/bots.ts` — `chooseBotPlay`: if a task card is being decided this trick, win it
+  when the bot owns it / dodge it when a teammate does; otherwise play the cheapest
+  non-task, non-trump, low card. Always legal.
+- `server/rooms.ts` — `addBot`/`removeBot` (lobby-only, re-seats), `isBotTurn`,
+  `playBotTurn`. `server/gameServer.ts` — `scheduleBots` (700ms/move chain) invoked after
+  start/play/resume/host actions; add/remove handlers (host-only).
+- `client` — Lobby host "+ Add bot / − Remove bot" controls, bot tags; `state` add/remove.
+- Tests: `shared/bots.test.ts` — bot-driven sweep (2–5 players × levels 0–8 × 6 seeds,
+  all legal, all terminate, some wins). `server/rooms.test.ts` — add/remove/re-seat,
+  1-human+2-bot game auto-resolves, no-add-after-start.
+
+### Issues found
+- Test stall: my human-play fallback could choose an illegal card. **Fixed** by playing a
+  real `legalMovesFor` card for the human seat. Bot logic itself needed no changes.
+
+### Verification
+- `npm test` → **67/67 passing**. typecheck (both) clean. client builds.
+
+### Project status: COMPLETE
+All 8 user requirements met (multi-device LAN play, offline session, name-to-join,
+responsive UI, start/restart/pause/end, saved progression, leaderboard, consistent themed
+graphics + style guide) plus sonar, escalating constrained missions, and optional bots.
+Backlog (not required): distress signal, mid-game reconnect-by-id, lobby task selection,
+mission complications (comms-off), optional raster art.
