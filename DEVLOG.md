@@ -84,3 +84,46 @@ Format per cycle: **Planned / Developed / Issues found / Next steps**.
 - `server/` workspace: Express static host + Socket.IO.
 - Rooms with short join codes; join-with-name; lobby; start game.
 - Per-seat private state projection (never leak other players' hands).
+
+---
+
+## Cycle 3 — Server, rooms & Socket.IO
+**Date:** 2026-06-06
+
+### Planned (≤5 goals)
+1. `server/` workspace (Express + Socket.IO + tsx) wired to `@dsc/shared`.
+2. Room manager: create/join with 4-char codes, names, seats, lobby.
+3. Per-seat private state projection (hide other hands) — in `shared` for reuse.
+4. Socket.IO event wiring: create/join/start/play/restart/leave + state broadcast.
+5. Tests for room manager + projection; smoke-boot the server.
+
+### Developed
+- `shared/view.ts` — `PlayerView` + `projectForSeat()`: own hand + legal moves full,
+  others reduced to `handCounts`; tasks/trick public. `shared/protocol.ts` — event
+  names (`EV`), payloads, `RoomView`, MIN/MAX players. `shared/missions.ts` —
+  `buildSimpleMission()` + `defaultTaskCount()` to drive early games.
+- `server/rooms.ts` — `RoomManager` (in-memory): `createRoom`, `joinRoom`,
+  `startGame` (deals via engine, picks commander), `play` (turn/legality via engine),
+  `restart`, `disconnect` cleanup, `toRoomView`; ambiguity-free code alphabet;
+  `sanitizeName`.
+- `server/index.ts` — Express static host (serves `client/dist` when built) + `/health`,
+  Socket.IO handlers, per-seat `GameView` push, `membership` map for routing/cleanup,
+  LAN-IP banner printing the URL to open on phones.
+- Tests: `server/rooms.test.ts` — **8 tests** (create/join/seats, full/unknown room,
+  min-players, start+commander+private projection, out-of-turn rejection, empty-room
+  cleanup, name sanitize).
+
+### Issues found
+- **npm audit: 1 critical + 4 moderate**, ALL in the dev toolchain (vitest/vite/esbuild —
+  Vitest UI + Vite dev server, never exposed by us). Production runtime (express,
+  socket.io) is clean. Fix = breaking vitest v4 bump. **Deferred to Cycle 10 (QA)** to
+  avoid destabilizing tests mid-build.
+
+### Verification
+- `npm test` → **37/37 passing** (15 + 14 + 8). `npm run typecheck` → clean.
+- Smoke boot: `/health` → `{"ok":true}`; LAN URL auto-printed (192.168.1.16).
+
+### Next steps (Cycle 4)
+- `client/` workspace (Vite + React): name/join + lobby screens.
+- Responsive game board: your hand, current trick, tasks, turn indicator.
+- Tap a legal card to play; win/lose screens; socket client wiring.

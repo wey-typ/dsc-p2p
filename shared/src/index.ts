@@ -5,3 +5,6 @@ export * from "./cards.js";
 export * from "./trick.js";
 export * from "./tasks.js";
 export * from "./game.js";
+export * from "./view.js";
+export * from "./missions.js";
+export * from "./protocol.js";

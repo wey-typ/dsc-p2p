@@ -12,5 +12,5 @@
     "verbatimModuleSyntax": true,
     "types": ["node"]
   },
-  "include": ["shared/src/**/*"]
+  "include": ["shared/src/**/*", "server/src/**/*"]
 }
