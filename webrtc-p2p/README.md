@@ -37,13 +37,23 @@ Host browser (tab)                     Guest browser(s)
 - **Persistence:** campaign/leaderboard/history in the host's `localStorage`.
 
 ## Status / TODO
-- [x] Sub-project scaffolded (this folder, plan, stub entry).
-- [ ] Vite app that imports `@dsc/shared` and runs a full game **locally** (no network) —
-      proves engine reuse in the browser.
-- [ ] WebRTC DataChannel transport + QR offer/answer handshake (2-player).
-- [ ] Host authority loop + per-seat projection over the channel.
-- [ ] Reuse the existing React UI components for the board.
-- [ ] Browser-local persistence; reconnect within a session.
+- [x] Sub-project scaffolded.
+- [x] **Transport abstraction** (`transport.ts`) + in-memory pair for tests.
+- [x] **Host/guest session logic** (`session.ts`) reusing the `@dsc/shared` engine — host is
+      authoritative, sends each side its private view. Tested via a full 2-player game over
+      the in-memory transport (`session.test.ts`).
+- [x] **WebRTC DataChannel transport** (`rtc.ts`, browser) — non-trickle ICE, LAN-first.
+- [x] **Manual signaling** (`signaling.ts`) — offer/answer ↔ paste-friendly codes (tested).
+- [ ] **React UI**: Host/Join connect screens (code exchange) + game board (NEXT).
+- [ ] Browser-local persistence; in-session reconnect.
+- [ ] (Later) QR scan instead of copy/paste; 3–5 players.
 
-## Running (once built)
-Planned: `npm install && npm run dev` inside this folder. Not wired up yet — see TODO.
+## How the 2-player connection will work (copy/paste codes, no server)
+1. Host taps **Host** → app shows an **offer code**. Host shares it (Messages/AirDrop).
+2. Guest taps **Join**, pastes the offer code → app shows an **answer code** → sends it back.
+3. Host pastes the answer code → connected. Play begins.
+
+## Running (once the UI lands)
+`cd webrtc-p2p && npm install && npm run dev` (it's a standalone Vite app; aliases
+`@dsc/shared` to the engine source). The networking core already typechecks
+(`npm run typecheck`) and its logic is covered by the root test suite.

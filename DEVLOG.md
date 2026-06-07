@@ -863,3 +863,39 @@ missions by construction**, not just a better bot.
 - `npm test` → **99/99** (kick: host-only/lobby-only/re-seat; removePlayer host handover;
   reconnect + disconnect handover still pass). typecheck (both) clean; client builds;
   server serves (200).
+
+---
+
+## Cycle 25 — WebRTC P2P foundation (sub-project)
+**Date:** 2026-06-07
+Separate `webrtc-p2p/` sub-project (does NOT touch the LAN version). Goal: server-less,
+2-player, iPhone-hostable from the browser.
+
+### Planned (≤5 goals)
+1. Transport abstraction (testable in-memory + real WebRTC).
+2. Host/guest session logic reusing the shared engine (host authoritative).
+3. Tested full 2-player game over the transport (incl. hand privacy).
+4. WebRTC DataChannel transport + manual signaling (copy/paste codes).
+5. Buildable package config + typecheck.
+
+### Developed
+- `transport.ts` — `Transport` interface + `createMemoryPair` (JSON-cloned, async).
+- `protocol.ts` — guest↔host message union + seat constants.
+- `session.ts` — `HostController` (owns GameState via `buildSolvableGame`/`playCard`/
+  `communicate`/`projectForSeat`; validates + sends per-seat private views) and
+  `GuestController` (thin client).
+- `rtc.ts` — browser `RTCPeerConnection` + DataChannel transport, non-trickle ICE, LAN-first
+  (`iceServers: []`).
+- `signaling.ts` — encode/decode offer/answer ↔ base64 paste codes.
+- `package.json`/`vite.config.ts`/`tsconfig.json` (standalone Vite app; aliases `@dsc/shared`).
+
+### Verification
+- Root `npm test` → **101/101** (incl. `session.test.ts`: full 2-player game over the
+  in-memory transport reaches a terminal state, host is authoritative, each side sees only
+  its own hand; out-of-turn guest play is rejected; `signaling.test.ts` round-trip).
+- `webrtc-p2p` `tsc --noEmit` clean (transport/session/rtc/signaling, incl. DOM WebRTC types).
+
+### Next (Cycle 26)
+- React UI for the P2P app: Host/Join connect screens (offer/answer code exchange) + the
+  game board; then `npm run build` verification and on-device play.
+- Browser-local persistence; later QR scanning + 3–5 players.
