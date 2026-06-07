@@ -1,6 +1,7 @@
 import { createServer, type Server as HttpServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
+import { networkInterfaces } from "node:os";
 import path from "node:path";
 import express from "express";
 import { Server } from "socket.io";
@@ -61,6 +62,25 @@ export function createGameServer(
     const rec = historyStore?.get(req.params.id);
     if (!rec) return res.status(404).json({ error: "Not found" });
     res.json(rec);
+  });
+  // Best LAN base URL for sharing (QR / link). Uses the server's real Wi-Fi address +
+  // the port the request came in on, so phones on the same network can reach it.
+  app.get("/api/lan", (req, res) => {
+    const port = req.socket.localPort ?? 3000;
+    const virtual = /^(utun|ipsec|ppp|tun|tap|awdl|llw|bridge|vboxnet|vmnet|docker|veth)/i;
+    let ip: string | null = null;
+    for (const [name, addrs] of Object.entries(networkInterfaces())) {
+      if (virtual.test(name)) continue;
+      for (const a of addrs ?? []) {
+        if (a.family === "IPv4" && !a.internal) {
+          ip = a.address;
+          break;
+        }
+      }
+      if (ip) break;
+    }
+    const host = ip ?? req.hostname ?? "localhost";
+    res.json({ baseUrl: `http://${host}:${port}`, ip });
   });
   app.get("/api/bot-stats", (_req, res) => {
     res.json(lab ? lab.stats() : { weights: null, totalRuns: 0, bestWinRate: 0, latestWinRate: null, recent: [] });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGame } from "../state";
 import { Leaderboard } from "./Leaderboard";
 import { HowToPlay } from "./HowToPlay";
@@ -18,6 +18,15 @@ export function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [showBotLab, setShowBotLab] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+
+  // Deep link: opening ?join=CODE (from a shared link / QR scan) prefills join mode.
+  useEffect(() => {
+    const join = new URLSearchParams(window.location.search).get("join");
+    if (join) {
+      setCode(join.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4));
+      setMode("join");
+    }
+  }, []);
 
   const nameOk = name.trim().length > 0;
 

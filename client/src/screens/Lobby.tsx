@@ -1,12 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGame } from "../state";
 import { LevelGuide } from "./LevelGuide";
+import { ShareRoom } from "./ShareRoom";
 import { missionName, missionNotes, MAX_LEVEL } from "@dsc/shared";
 
 export function Lobby() {
   const { room, youId, startGame, addBot, removeBot, setLevel, leave } = useGame();
   const [showGuide, setShowGuide] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [baseUrl, setBaseUrl] = useState(() => window.location.origin);
+
+  // Ask the server for its LAN address so the shared link works from other phones
+  // (window.location.origin may be "localhost" on the host machine).
+  useEffect(() => {
+    fetch("/api/lan")
+      .then((r) => r.json())
+      .then((d: { baseUrl?: string }) => {
+        if (d.baseUrl) setBaseUrl(d.baseUrl);
+      })
+      .catch(() => {});
+  }, []);
+
   if (!room) return null;
+  const joinUrl = `${baseUrl}/?join=${room.code}`;
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(joinUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 1800);
+    } catch {
+      setShowShare(true); // clipboard blocked — show the modal with the URL instead
+    }
+  }
   const isHost = room.hostId === youId;
   const canStart = room.players.length >= room.minPlayers;
   const botCount = room.players.filter((p) => p.isBot).length;
@@ -18,9 +44,17 @@ export function Lobby() {
         <button className="btn link" onClick={leave}>
           ← Leave
         </button>
-        <div className="code-badge">
-          <span>Room code</span>
-          <strong>{room.code}</strong>
+        <div className="code-share">
+          <div className="code-badge">
+            <span>Room code</span>
+            <strong>{room.code}</strong>
+          </div>
+          <button className="btn chip" onClick={() => setShowShare(true)} aria-label="Show QR code">
+            ▣ QR
+          </button>
+          <button className="btn chip" onClick={copyLink} aria-label="Copy join link">
+            {linkCopied ? "✓ Copied" : "🔗 Link"}
+          </button>
         </div>
       </header>
 
@@ -104,6 +138,10 @@ export function Lobby() {
         </button>
       ) : (
         <p className="hint center">Waiting for the host to begin the dive…</p>
+      )}
+
+      {showShare && (
+        <ShareRoom code={room.code} joinUrl={joinUrl} onClose={() => setShowShare(false)} />
       )}
 
       {showGuide && (

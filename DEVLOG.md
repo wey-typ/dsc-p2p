@@ -724,3 +724,39 @@ missions by construction**, not just a better bot.
 
 ### Verification
 - `npm test` → **93/93**; typecheck clean; client builds; win-campaign 18/18.
+
+---
+
+## Cycle 21 — QR/link room join + animation toggle
+**Date:** 2026-06-07
+
+### Planned (≤5 goals)
+1. Server `/api/lan` → shareable LAN base URL.
+2. `?join=CODE` deep-link prefills join mode in Home.
+3. Lobby: QR + Link buttons beside the room code (QR modal + copy/share).
+4. Animations always on (stop honoring prefers-reduced-motion) + per-device off toggle.
+5. Tests + build.
+
+### Developed
+- `server/gameServer.ts` — `GET /api/lan` returns `{baseUrl, ip}` using the real Wi-Fi
+  interface + the request's listening port (so the link works even if the host opened the
+  app via localhost).
+- `client/screens/ShareRoom.tsx` — QR (via `qrcode-generator`, bundled → works offline) of
+  `<baseUrl>/?join=<code>`, the link text, Copy + Web-Share. `qrcode-generator.d.ts` local
+  types (no published @types).
+- Lobby — fetches `/api/lan`; **▣ QR** and **🔗 Link** buttons beside the room code (Link
+  copies to clipboard with feedback; QR opens the modal).
+- Home — reads `?join=CODE` on load → switches to join mode with the code prefilled (so a
+  scanned QR / clicked link lands on the join screen; the player just enters a name).
+- Animations — removed the `prefers-reduced-motion` opt-out (everyone sees motion by
+  default); added `.no-anim` class + **Settings** modal (⚙ gear, all screens) with an
+  Animations toggle persisted in `localStorage` per device (default ON).
+- Tests: `server/lan.test.ts` (`/api/lan` shape). **94 tests total.**
+
+### Issues found
+- `@types/qrcode-generator` version didn't exist → wrote a local `.d.ts`.
+- TS flagged `navigator.share` as always-defined → used `typeof navigator.share === "function"`.
+
+### Verification
+- `npm test` → **94/94**; typecheck (both) clean; client builds; `/api/lan` returns the LAN
+  URL even via localhost; `/?join=ABCD` serves the SPA.
