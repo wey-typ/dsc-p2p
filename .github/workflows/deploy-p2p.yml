@@ -25,19 +25,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - name: Compute base path (/<repo>/)
-        run: echo "BASE_PATH=/${GITHUB_REPOSITORY#*/}/" >> "$GITHUB_ENV"
+      - name: Compute base path (P2P app lives at /<repo>/p2p/)
+        run: echo "BASE_PATH=/${GITHUB_REPOSITORY#*/}/p2p/" >> "$GITHUB_ENV"
       - name: Build P2P app
         working-directory: webrtc-p2p
         run: |
           npm install
           npm run build
+      - name: Assemble Pages site (landing + /p2p/ + /lan/)
+        run: |
+          rm -rf site && mkdir -p site
+          cp -R pages/. site/
+          cp -R webrtc-p2p/dist site/p2p
       - uses: actions/configure-pages@v5
         with:
           enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: webrtc-p2p/dist
+          path: site
 
   deploy:
     needs: build

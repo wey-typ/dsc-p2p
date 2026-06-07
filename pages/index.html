@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#04141f" />
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <title>Deep Sea Crew</title>
+    <style>
+      :root { --gold:#f2c14e; --foam:#e9f6fb; --dim:#a9cdd9; --deep:#082b3a; }
+      * { box-sizing:border-box; }
+      body {
+        margin:0; min-height:100vh; color:var(--foam);
+        font-family:"Trebuchet MS",Segoe UI,system-ui,sans-serif;
+        background:radial-gradient(120% 80% at 50% -10%,#1d6c8a,#0e4257 40%,#082b3a 75%,#04141f);
+        display:flex; flex-direction:column; align-items:center; padding:32px 18px 48px;
+      }
+      .mark { font-size:3.4rem; margin-top:6vh; }
+      h1 { margin:6px 0 2px; font-size:2.2rem; letter-spacing:.02em; }
+      .tag { color:var(--dim); margin:0 0 22px; text-align:center; }
+      .cards { display:flex; flex-direction:column; gap:14px; width:100%; max-width:440px; }
+      .card {
+        display:block; text-decoration:none; color:inherit;
+        background:rgba(8,43,58,.72); border:1px solid rgba(169,205,217,.2); border-radius:16px;
+        padding:18px 18px; transition:transform .08s ease, border-color .15s ease;
+      }
+      .card:active { transform:scale(.99); }
+      .card.primary { border-color:var(--gold); box-shadow:0 0 0 1px rgba(242,193,78,.25); }
+      .card h2 { margin:0 0 4px; font-size:1.15rem; }
+      .card h2 .em { color:var(--gold); }
+      .card p { margin:0; color:var(--dim); font-size:.9rem; line-height:1.5; }
+      .pill { display:inline-block; font-size:.66rem; font-weight:800; text-transform:uppercase;
+        letter-spacing:.08em; padding:3px 8px; border-radius:999px; margin-bottom:8px;
+        background:rgba(242,193,78,.16); color:var(--gold); }
+      .pill.alt { background:rgba(79,209,165,.18); color:#4fd1a5; }
+      .foot { color:var(--dim); font-size:.8rem; margin-top:26px; text-align:center; max-width:440px; }
+      a.src { color:var(--gold); }
+    </style>
+  </head>
+  <body>
+    <div class="mark">🤿</div>
+    <h1>Deep Sea Crew</h1>
+    <p class="tag">A cooperative deep-sea trick-taking game.</p>
+
+    <div class="cards">
+      <a class="card primary" href="./p2p/">
+        <span class="pill">Play now · installable</span>
+        <h2>🌐 <span class="em">Peer-to-peer</span> version</h2>
+        <p>No server, no setup. Add it to your home screen and play with a friend over a
+          direct connection (scan a QR to link up). Best for 2 players; works for up to 5.</p>
+      </a>
+
+      <a class="card" href="./lan/">
+        <span class="pill alt">Same Wi-Fi · up to 5</span>
+        <h2>📶 LAN version</h2>
+        <p>One device runs a host server; everyone joins from a browser on the same Wi-Fi.
+          Smoothest for 3–5 players — needs a computer (or Android phone) to host.</p>
+      </a>
+    </div>
+
+    <p class="foot">
+      Open-source &nbsp;·&nbsp;
+      <a class="src" href="https://github.com/wey-typ/dsc-p2p">source on GitHub</a>
+    </p>
+  </body>
+</html>

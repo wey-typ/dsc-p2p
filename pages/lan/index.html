@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#04141f" />
+    <link rel="icon" type="image/png" href="../favicon.png" />
+    <title>Deep Sea Crew — LAN version</title>
+    <style>
+      :root { --gold:#f2c14e; --foam:#e9f6fb; --dim:#a9cdd9; --ok:#4fd1a5; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-height:100vh; color:var(--foam);
+        font-family:"Trebuchet MS",Segoe UI,system-ui,sans-serif;
+        background:radial-gradient(120% 80% at 50% -10%,#1d6c8a,#0e4257 40%,#082b3a 75%,#04141f);
+        padding:28px 18px 56px; }
+      .wrap { max-width:560px; margin:0 auto; }
+      a.back { color:var(--dim); text-decoration:none; font-weight:700; }
+      h1 { font-size:1.8rem; margin:14px 0 4px; }
+      .tag { color:var(--dim); margin:0 0 18px; }
+      .panel { background:rgba(8,43,58,.72); border:1px solid rgba(169,205,217,.2);
+        border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+      h2 { font-size:1.05rem; margin:2px 0 8px; }
+      p, li { color:var(--foam); line-height:1.6; }
+      .dim { color:var(--dim); }
+      code, pre { background:rgba(4,20,31,.6); border-radius:8px; }
+      code { padding:1px 6px; font-size:.88rem; }
+      pre { padding:12px 14px; overflow-x:auto; font-size:.82rem; border:1px solid rgba(169,205,217,.15); }
+      .note { border-left:4px solid var(--gold); }
+      ol { padding-left:20px; }
+      a { color:var(--gold); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <a class="back" href="../">← Back</a>
+      <h1>📶 LAN version</h1>
+      <p class="tag">Host on one device; everyone joins over the same Wi-Fi. Best for 3–5 players.</p>
+
+      <div class="panel note">
+        <h2>Why this one isn't hosted here</h2>
+        <p class="dim">The LAN version needs a small <strong>server</strong> running on a
+          computer (or Android phone) — GitHub Pages only serves static files, and a secure
+          (HTTPS) web page can't talk to a local server anyway. So you run it yourself; it
+          takes one command. Want zero setup instead? Use the
+          <a href="../p2p/">peer-to-peer version</a>.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Run it (macOS — easiest)</h2>
+        <ol>
+          <li>Get the project from <a href="https://github.com/wey-typ/dsc-p2p">GitHub</a>.</li>
+          <li>Double-click <strong>Deep Sea Crew.app</strong> (or
+            <code>launch-deep-sea-crew.command</code>) in the project folder.</li>
+          <li>It prints a <strong>Wi-Fi URL</strong> like <code>http://192.168.1.16:3000</code>.</li>
+          <li>Everyone opens that URL on their phone (same Wi-Fi). One person creates a crew,
+            shares the 4-letter code; others join.</li>
+        </ol>
+      </div>
+
+      <div class="panel">
+        <h2>Run it (any OS — terminal)</h2>
+        <pre>git clone https://github.com/wey-typ/dsc-p2p
+cd dsc-p2p
+npm install
+npm run play   # builds the client + starts the server on :3000</pre>
+        <p class="dim">No router? Turn on the host device's personal hotspot and have
+          everyone join that — the LAN works over the hotspot.</p>
+      </div>
+
+      <div class="panel">
+        <h2>What you get</h2>
+        <p class="dim">Full game: 2–5 players, levels with rules guide, sonar, save/resume,
+          leaderboard, bots, reconnect, sound &amp; music. The peer-to-peer version shares the
+          same gameplay but trades the server for a direct device-to-device link.</p>
+      </div>
+    </div>
+  </body>
+</html>
