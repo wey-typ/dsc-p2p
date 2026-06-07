@@ -36,6 +36,7 @@ export const EV = {
   RoomJoin: "room:join",
   RoomLeave: "room:leave",
   RoomRejoin: "room:rejoin",
+  RoomKick: "room:kick",
   RoomAddBot: "room:addbot",
   RoomRemoveBot: "room:removebot",
   RoomSetLevel: "room:setlevel",
@@ -50,6 +51,7 @@ export const EV = {
   RoomState: "room:state",
   GameView: "game:view",
   ErrorMsg: "error:msg",
+  Kicked: "room:kicked",
 } as const;
 
 // ---- payloads ----
@@ -64,6 +66,9 @@ export interface JoinPayload {
 }
 export interface RejoinPayload {
   code: string;
+  playerId: string;
+}
+export interface KickPayload {
   playerId: string;
 }
 export interface StartPayload {

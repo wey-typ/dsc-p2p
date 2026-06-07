@@ -4,12 +4,16 @@ export function Settings({
   setAnimOn,
   soundOn,
   setSoundOn,
+  musicOn,
+  setMusicOn,
   onClose,
 }: {
   animOn: boolean;
   setAnimOn: (v: boolean) => void;
   soundOn: boolean;
   setSoundOn: (v: boolean) => void;
+  musicOn: boolean;
+  setMusicOn: (v: boolean) => void;
   onClose: () => void;
 }) {
   return (
@@ -44,6 +48,22 @@ export function Settings({
             role="switch"
             aria-checked={soundOn}
             aria-label="Toggle sound effects"
+          >
+            <span className="knob" />
+          </button>
+        </div>
+
+        <div className="setting-row">
+          <div className="setting-text">
+            <strong>Background music</strong>
+            <p className="hint">Soft ocean ambience. On by default.</p>
+          </div>
+          <button
+            className={`toggle ${musicOn ? "on" : ""}`}
+            onClick={() => setMusicOn(!musicOn)}
+            role="switch"
+            aria-checked={musicOn}
+            aria-label="Toggle background music"
           >
             <span className="knob" />
           </button>

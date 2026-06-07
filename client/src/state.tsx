@@ -20,6 +20,7 @@ interface GameContextValue {
   startGame: (taskCount?: number) => void;
   addBot: () => void;
   removeBot: () => void;
+  kick: (playerId: string) => void;
   setLevel: (level: number) => void;
   restart: () => void;
   pause: () => void;
@@ -98,6 +99,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     socket.on(EV.RoomState, (r: RoomView) => setRoom(r));
     socket.on(EV.GameView, (v: PlayerView) => setView(v));
     socket.on(EV.ErrorMsg, (e: { message: string }) => setError(e.message));
+    socket.on(EV.Kicked, (e: { message?: string }) => {
+      clearSession();
+      setRoom(null);
+      setView(null);
+      setYouId(null);
+      setError(e?.message ?? "You were removed from the room.");
+    });
     return () => {
       socket.removeAllListeners();
       socket.disconnect();
@@ -127,6 +135,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       startGame: (taskCount) => s().emit(EV.GameStart, { taskCount }),
       addBot: () => s().emit(EV.RoomAddBot, {}),
       removeBot: () => s().emit(EV.RoomRemoveBot, {}),
+      kick: (playerId) => s().emit(EV.RoomKick, { playerId }),
       setLevel: (level) => s().emit(EV.RoomSetLevel, { level }),
       restart: () => {
         setView(null);

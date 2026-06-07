@@ -38,7 +38,6 @@ export function Game() {
   const [showHelp, setShowHelp] = useState(false);
   const [hint, setHint] = useState<Suggestion | null>(null);
 
-  const taskRowRef = useRef<HTMLDivElement | null>(null);
   const sfxPrev = useRef({ plays: 0, trickNo: 0, completed: 0, comms: 0, phase: "", yourTurn: false, init: false });
 
   // Clear a shown hint whenever the table state advances (turn or trick changes).
@@ -72,25 +71,6 @@ export function Game() {
     if (yt && !p.yourTurn) playSfx("turn");
     snap();
   }, [view]);
-
-  // As tasks complete, auto-scroll the task strip to reveal the next pending task.
-  useEffect(() => {
-    const row = taskRowRef.current;
-    if (!row || !view || view.completedCount === 0) return;
-    const next = row.querySelector<HTMLElement>(".task-pending");
-    if (!next) return;
-    const behavior: ScrollBehavior = document.querySelector(".no-anim") ? "auto" : "smooth";
-    const delta =
-      next.getBoundingClientRect().left -
-      row.getBoundingClientRect().left -
-      (row.clientWidth - next.clientWidth) / 2;
-    row.scrollBy({ left: delta, behavior });
-  }, [view?.completedCount]);
-
-  // When a new level/game starts, reset the task strip to show the first task.
-  useEffect(() => {
-    taskRowRef.current?.scrollTo({ left: 0, behavior: "auto" });
-  }, [room?.level, view?.phase]);
 
   if (!view || !room) return null;
 
@@ -179,7 +159,7 @@ export function Game() {
         <div className="section-label">
           Tasks · {view.completedCount}/{view.taskTotal}
         </div>
-        <div className="task-row" ref={taskRowRef}>
+        <div className="task-row">
           {view.tasks.map((t) => (
             <div key={t.id} className={`task task-${t.status}`}>
               <CardView card={t.card} small />

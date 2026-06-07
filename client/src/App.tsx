@@ -5,10 +5,11 @@ import { Lobby } from "./screens/Lobby";
 import { Game } from "./screens/Game";
 import { Settings } from "./screens/Settings";
 import { Toast } from "./components/Toast";
-import { setSoundEnabled } from "./sound";
+import { setSoundEnabled, setMusicEnabled, unlockAudio } from "./sound";
 
 const ANIM_KEY = "dsc.animations";
 const SOUND_KEY = "dsc.sound";
+const MUSIC_KEY = "dsc.music";
 
 function readSetting(key: string): boolean {
   try {
@@ -22,6 +23,7 @@ export function App() {
   const { room, connected } = useGame();
   const [animOn, setAnimOn] = useState(() => readSetting(ANIM_KEY));
   const [soundOn, setSoundOn] = useState(() => readSetting(SOUND_KEY));
+  const [musicOn, setMusicOn] = useState(() => readSetting(MUSIC_KEY));
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
@@ -40,6 +42,25 @@ export function App() {
       /* ignore */
     }
   }, [soundOn]);
+
+  useEffect(() => {
+    setMusicEnabled(musicOn);
+    try {
+      localStorage.setItem(MUSIC_KEY, musicOn ? "on" : "off");
+    } catch {
+      /* ignore */
+    }
+  }, [musicOn]);
+
+  // Browsers block audio until a user gesture — unlock + start BGM on the first interaction.
+  useEffect(() => {
+    const onFirst = () => {
+      unlockAudio();
+      window.removeEventListener("pointerdown", onFirst);
+    };
+    window.addEventListener("pointerdown", onFirst);
+    return () => window.removeEventListener("pointerdown", onFirst);
+  }, []);
 
   let screen;
   if (!room) screen = <Home />;
@@ -61,6 +82,8 @@ export function App() {
           setAnimOn={setAnimOn}
           soundOn={soundOn}
           setSoundOn={setSoundOn}
+          musicOn={musicOn}
+          setMusicOn={setMusicOn}
           onClose={() => setShowSettings(false)}
         />
       )}

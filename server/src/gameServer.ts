@@ -18,6 +18,7 @@ import {
   type PlayPayload,
   type CommunicatePayload,
   type SetLevelPayload,
+  type KickPayload,
   type JoinAck,
 } from "@dsc/shared";
 import { RoomManager, type Room } from "./rooms.js";
@@ -203,9 +204,13 @@ export function createGameServer(
     const m = membership.get(socketId);
     if (!m) return;
     membership.delete(socketId);
-    rooms.disconnect(m.code, m.playerId);
     const room = rooms.getRoom(m.code);
-    if (room) broadcastRoom(room);
+    // In the lobby, fully remove the seat; mid-game, just mark disconnected so the
+    // player can reconnect to their hand.
+    if (room && room.phase === "lobby") rooms.removePlayer(m.code, m.playerId);
+    else rooms.disconnect(m.code, m.playerId);
+    const updated = rooms.getRoom(m.code);
+    if (updated) broadcastRoom(updated);
   }
 
   io.on("connection", (socket) => {
@@ -276,6 +281,21 @@ export function createGameServer(
       if (!m) return;
       const res = rooms.communicate(m.code, m.playerId, payload.card);
       if ("error" in res) return socket.emit(EV.ErrorMsg, { message: res.error });
+      const room = rooms.getRoom(m.code);
+      if (room) broadcastRoom(room);
+    });
+
+    socket.on(EV.RoomKick, (payload: KickPayload) => {
+      const m = membership.get(socket.id);
+      if (!m) return;
+      const res = rooms.kick(m.code, m.playerId, payload?.playerId ?? "");
+      if ("error" in res) return socket.emit(EV.ErrorMsg, { message: res.error });
+      const sid = socketIdFor(m.code, payload.playerId);
+      if (sid) {
+        io.to(sid).emit(EV.Kicked, { message: "The host removed you from the room." });
+        io.sockets.sockets.get(sid)?.leave(m.code);
+        membership.delete(sid);
+      }
       const room = rooms.getRoom(m.code);
       if (room) broadcastRoom(room);
     });

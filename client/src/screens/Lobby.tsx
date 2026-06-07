@@ -5,7 +5,7 @@ import { ShareRoom } from "./ShareRoom";
 import { missionName, missionNotes, MAX_LEVEL } from "@dsc/shared";
 
 export function Lobby() {
-  const { room, youId, startGame, addBot, removeBot, setLevel, leave } = useGame();
+  const { room, youId, startGame, addBot, removeBot, kick, setLevel, leave } = useGame();
   const [showGuide, setShowGuide] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -111,6 +111,11 @@ export function Lobby() {
             {p.isBot && <span className="tag bot">bot</span>}
             {p.id === room.hostId && <span className="tag">host</span>}
             {p.id === youId && <span className="tag you">you</span>}
+            {isHost && p.id !== room.hostId && (
+              <button className="kick-btn" onClick={() => kick(p.id)} aria-label={`Remove ${p.name}`}>
+                ✕
+              </button>
+            )}
           </li>
         ))}
         {Array.from({ length: room.maxPlayers - room.players.length }).map((_, i) => (

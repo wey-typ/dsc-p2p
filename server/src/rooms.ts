@@ -164,6 +164,35 @@ export class RoomManager {
     }
   }
 
+  /** Fully remove a player and re-seat the rest (lobby use: leave / kick). */
+  removePlayer(code: string, playerId: string): void {
+    const room = this.getRoom(code);
+    if (!room) return;
+    const wasHost = room.hostId === playerId;
+    room.players = room.players.filter((p) => p.id !== playerId);
+    room.players.forEach((p, i) => (p.seat = i)); // keep seats contiguous
+    if (room.players.length === 0) {
+      room.emptySince = Date.now();
+      return;
+    }
+    if (wasHost) {
+      const next = room.players.find((p) => p.connected) ?? room.players[0]!;
+      room.hostId = next.id;
+    }
+  }
+
+  /** Host removes another player. Lobby only (removing a seat mid-hand breaks the deal). */
+  kick(code: string, requesterId: string, targetId: string): { ok: true } | { error: string } {
+    const room = this.getRoom(code);
+    if (!room) return { error: "Room not found." };
+    if (room.hostId !== requesterId) return { error: "Only the host can remove players." };
+    if (room.phase !== "lobby") return { error: "Can only remove players in the lobby." };
+    if (targetId === requesterId) return { error: "You can't remove yourself." };
+    if (!room.players.some((p) => p.id === targetId)) return { error: "Player not found." };
+    this.removePlayer(code, targetId);
+    return { ok: true };
+  }
+
   /**
    * Re-attach a returning player (same playerId) to their existing seat after a drop.
    * Their hand and the game state are untouched, so play resumes seamlessly.

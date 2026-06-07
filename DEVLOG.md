@@ -830,3 +830,36 @@ missions by construction**, not just a better bot.
 - `npm test` → **96/96**; typecheck (both) clean; client builds; server serves app +
   `/favicon.png` + `/apple-touch-icon.png` (200). Visual items (icon, wrap, autoscroll,
   sound) are best confirmed on a device/desktop.
+
+---
+
+## Cycle 24 — Kick, host handover, ocean BGM, tasks always visible
+**Date:** 2026-06-07
+
+### Planned (≤5 goals)
+1. Host can kick a player; host role transfers if the host leaves/drops.
+2. Soft ocean background music + toggle.
+3. Tasks always fully visible (no scrolling).
+4. Tests.
+
+### Developed
+- `server/rooms.ts` — `removePlayer` (remove + re-seat + host handover + empty cleanup),
+  `kick` (host-only, lobby-only, not self). Host auto-handover on disconnect already
+  existed (Cycle 10/22); `removePlayer` adds it for kicks/leaves too.
+- `server/gameServer.ts` — `RoomKick` handler (notifies the kicked socket via `Kicked`,
+  detaches it, rebroadcasts); `handleLeave` now fully removes a player in the lobby
+  (cleans the seat) but only marks disconnected mid-game (so they can reconnect).
+- `shared/protocol.ts` — `RoomKick` / `Kicked` events + `KickPayload`.
+- `client` — `state.kick()` + handles the `Kicked` event (clears session → Home with a
+  notice); Lobby shows a host-only ✕ remove button per other player.
+- **Ocean BGM:** `client/sound.ts` now also synthesizes a soft, slowly-evolving ambient
+  chord pad (low-pass + gentle swell, very low gain, drifts between calm chords) — no audio
+  files, low CPU. `unlockAudio()` starts it on first user gesture (autoplay rules). New
+  **Background music** toggle in Settings (default on, per-device).
+- **Tasks always visible:** `.task-row` now wraps onto multiple rows instead of scrolling;
+  removed the now-unneeded auto-scroll logic.
+
+### Verification
+- `npm test` → **99/99** (kick: host-only/lobby-only/re-seat; removePlayer host handover;
+  reconnect + disconnect handover still pass). typecheck (both) clean; client builds;
+  server serves (200).

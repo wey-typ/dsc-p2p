@@ -170,6 +170,43 @@ describe("RoomManager", () => {
     expect(rm.addBot(room.code)).toEqual({ error: "Can only add bots in the lobby." });
   });
 
+  it("host can kick a player (lobby), re-seating the rest; non-hosts cannot", () => {
+    const rm = new RoomManager(40);
+    const { room, player: host } = rm.createRoom("Host");
+    const two = rm.joinRoom(room.code, "Two");
+    const three = rm.joinRoom(room.code, "Three");
+    const twoId = "player" in two ? two.player.id : "";
+    const threeId = "player" in three ? three.player.id : "";
+
+    // a non-host cannot kick
+    expect(rm.kick(room.code, twoId, threeId)).toEqual({ error: "Only the host can remove players." });
+    // host cannot kick self
+    expect(rm.kick(room.code, host.id, host.id)).toEqual({ error: "You can't remove yourself." });
+    // host kicks Two
+    expect(rm.kick(room.code, host.id, twoId)).toEqual({ ok: true });
+    expect(room.players.map((p) => p.name)).toEqual(["Host", "Three"]);
+    expect(room.players.map((p) => p.seat)).toEqual([0, 1]); // re-seated contiguously
+  });
+
+  it("won't kick once the game has started", () => {
+    const rm = new RoomManager(41);
+    const { room, player: host } = rm.createRoom("Host");
+    const two = rm.joinRoom(room.code, "Two");
+    const twoId = "player" in two ? two.player.id : "";
+    rm.startGame(room.code, 2, 1);
+    expect(rm.kick(room.code, host.id, twoId)).toEqual({ error: "Can only remove players in the lobby." });
+  });
+
+  it("removePlayer hands the host role to a remaining player", () => {
+    const rm = new RoomManager(42);
+    const { room, player: host } = rm.createRoom("Host");
+    const two = rm.joinRoom(room.code, "Two");
+    const twoId = "player" in two ? two.player.id : "";
+    rm.removePlayer(room.code, host.id);
+    expect(room.hostId).toBe(twoId);
+    expect(room.players.map((p) => p.seat)).toEqual([0]);
+  });
+
   it("reassigns the host when the host disconnects", () => {
     const rm = new RoomManager(9);
     const { room, player } = rm.createRoom("Host");

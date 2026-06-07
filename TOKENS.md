@@ -45,3 +45,4 @@ Each new cycle appends a row with an estimate + a one-line basis. (Cycles 12+ be
 | 21 | QR/link join + animation toggle | ~26k | /api/lan + ShareRoom(QR) + deep-link + Settings + tests |
 | 22 | Reconnect + one-click launcher | ~24k | rejoin + grace sweep + session persist + .command/.app + tests |
 | 23 | Icon, autoscroll, sound, mobile UI fixes, P2P scaffold | ~30k | icns + Web Audio SFX + task autoscroll + hand wrap + overlap fix + p2p subfolder |
+| 24 | Kick + host handover + ocean BGM + tasks-always-visible | ~24k | kick/removePlayer + procedural BGM + Settings + task wrap + tests |
