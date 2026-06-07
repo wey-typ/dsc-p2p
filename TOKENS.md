@@ -49,3 +49,4 @@ Each new cycle appends a row with an estimate + a one-line basis. (Cycles 12+ be
 | 25 | WebRTC P2P foundation (transport/session/rtc/signaling) | ~30k | P2P core + tests + RTC + signaling + config |
 | 26 | P2P UI + installable PWA | ~34k | connect screens + board + lobby + PWA + build verify |
 | 27 | P2P QR scanning + compressed signaling | ~26k | gzip codes + QR display + camera scanner (jsQR) + build |
+| 28 | P2P reconnect + N-player core + persistence | ~34k | guestId reconnect + serialize/restore + N guests + unified invite UI + tests |

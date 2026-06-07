@@ -8,13 +8,12 @@ export interface P2PRoom {
   hostName: string;
 }
 
-/** Guest → Host messages. */
+/** Guest → Host messages. `guestId` is a stable per-device id so a returning guest
+ *  reclaims its existing seat (reconnect) instead of taking a new one. */
 export type GuestMsg =
-  | { t: "hello"; name: string }
-  | { t: "start"; level?: number }
+  | { t: "hello"; name: string; guestId: string }
   | { t: "play"; card: Card }
-  | { t: "communicate"; card: Card }
-  | { t: "restart" };
+  | { t: "communicate"; card: Card };
 
 /** Host → Guest messages. */
 export type HostMsg =

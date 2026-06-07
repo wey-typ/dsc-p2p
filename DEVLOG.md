@@ -963,3 +963,38 @@ thereafter (gameplay itself is still server-less).
 ### Verification
 - Root `npm test` → **104/104** (signaling compress/round-trip/legacy). `webrtc-p2p`
   typecheck + build clean (PWA SW/manifest regenerated). Camera scan is an on-device check.
+
+---
+
+## Cycle 28 — P2P reconnect + N-player core
+**Date:** 2026-06-07
+
+### Planned (≤5 goals)
+1. Reconnect a dropped peer mid-game (game state intact).
+2. Host game persistence (survive host tab reload / phone eviction).
+3. Generalize the session to N players (assess 3–5).
+4. Unified "Invite / Reconnect" UI (also the way to add players 3–5).
+5. Tests.
+
+### Developed
+- `session.ts` — `HostController` rewritten for **up to 5 players**: guests keyed by a
+  stable `guestId`; a returning guest **reclaims its seat** (reconnect) with the game
+  untouched; `serialize()/restore()` for host persistence; `onChange` hook.
+  `GuestController` sends a `guestId`.
+- `protocol.ts` — `hello` carries `guestId`.
+- `App.tsx` — rewritten around a single **Invite / Reconnect** action (host can invite
+  repeatedly → adds players up to 5, or reconnects a dropped one by id). Host game persisted
+  to `localStorage` (+ "Resume your hosted game" on Home). Guest detects channel close →
+  "Reconnect" (scan the host's new invite; same `guestId` reclaims the seat).
+- Tests: `session.test.ts` — 2-player full game, **3-player full game**, **reconnect**
+  (drop → re-handshake same id → seat reclaimed, game intact), **serialize/restore** resume.
+
+### 3–5 players — verdict
+The engine + session core fully support 2–5. The app now plays 3–5 via the Invite button
+(the host does one quick code/QR handshake per friend — N−1 handshakes total). It works;
+it's just more taps than 2-player. A tiny optional signaling relay could make 3–5 one-tap,
+but that reintroduces a server, so it's left as a deliberate trade-off.
+
+### Verification
+- Root `npm test` → **106/106** (incl. 3-player + reconnect + persistence). `webrtc-p2p`
+  typecheck + build clean (PWA regenerated). Live WebRTC reconnect is the on-device check.

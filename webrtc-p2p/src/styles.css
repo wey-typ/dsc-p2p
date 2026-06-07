@@ -80,3 +80,7 @@ details summary { cursor:pointer; list-style:none; }
 details { display:flex; flex-direction:column; gap:8px; }
 .scanner { max-width:420px; }
 .scan-video { width:100%; max-height:60vh; border-radius:12px; background:#000; object-fit:cover; }
+.hostbar { max-width:720px; margin:0 auto; padding:8px 16px max(8px,env(safe-area-inset-top)); display:flex; align-items:center; gap:8px; justify-content:space-between; }
+.hb-crew { font-size:.78rem; color:var(--dim); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ocard.invite { max-width:420px; text-align:left; max-height:88vh; overflow-y:auto; }
+.ocard.invite h2, .ocard.invite h3 { margin:8px 0 4px; }
