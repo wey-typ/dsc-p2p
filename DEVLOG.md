@@ -760,3 +760,38 @@ missions by construction**, not just a better bot.
 ### Verification
 - `npm test` → **94/94**; typecheck (both) clean; client builds; `/api/lan` returns the LAN
   URL even via localhost; `/?join=ABCD` serves the SPA.
+
+---
+
+## Cycle 22 — Reconnect + one-click laptop launcher
+**Date:** 2026-06-07
+
+### Planned (≤5 goals)
+1. Token-based reconnect: a dropped player rejoins their seat mid-game.
+2. Grace-period empty-room cleanup (so a brief drop doesn't destroy the game).
+3. Client session persistence + auto-rejoin on (re)connect.
+4. One-click macOS launcher (double-click app/command to host).
+5. Tests + build.
+
+### Developed
+- `shared/protocol.ts` — `RoomRejoin` event + `RejoinPayload`.
+- `server/rooms.ts` — `rejoin()` (re-attach existing seat; hand/state intact), `disconnect`
+  no longer deletes immediately (sets `emptySince`), `sweepEmptyRooms(grace)` deletes after
+  a 2-min grace; host auto-transfer retained.
+- `server/gameServer.ts` — `RoomRejoin` handler + a 30s `setInterval` sweep (`unref`'d so
+  tests/process exit cleanly).
+- `client/state.tsx` — persists `{code, playerId}` in `localStorage` on create/join; on
+  socket `connect` auto-emits `RoomRejoin`; clears on intentional leave or failed rejoin.
+- **Launcher:** `launch-deep-sea-crew.command` (double-click → build + start + open browser)
+  and a `Deep Sea Crew.app` bundle that opens it (clickable icon). README documents both.
+
+### Decisions / honest notes
+- **Mid-game *join*** (new player into an in-progress hand) is NOT added — trick-taking
+  deals all cards to fixed seats, so it would break the rules. New players join **between
+  missions** (already supported in the lobby). Documented.
+- **Bluetooth / iPhone-as-host** aren't viable for a browser game (no Web Bluetooth on iOS,
+  browsers can't host); kept computer host + added the one-click launcher per user choice.
+
+### Verification
+- `npm test` → **96/96** (incl. rejoin restores seat + game intact; grace sweep). typecheck
+  (both) clean; client builds; launchers pass `bash -n`; server boots.

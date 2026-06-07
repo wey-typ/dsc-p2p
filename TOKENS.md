@@ -43,3 +43,4 @@ Each new cycle appends a row with an estimate + a one-line basis. (Cycles 12+ be
 | 19 | Level selection + level guide | ~20k | setLevel + lobby picker + guide modal + tests |
 | 20 | Solver + win-every-level + 2/3p training | ~46k | solver + solvable gen + win-campaign + HTML/CLI + tests + measurement |
 | 21 | QR/link join + animation toggle | ~26k | /api/lan + ShareRoom(QR) + deep-link + Settings + tests |
+| 22 | Reconnect + one-click launcher | ~24k | rejoin + grace sweep + session persist + .command/.app + tests |

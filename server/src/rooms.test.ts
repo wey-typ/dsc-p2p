@@ -73,11 +73,41 @@ describe("RoomManager", () => {
     expect([player.id, ("player" in j ? j.player.id : "")].filter(Boolean).length).toBe(2);
   });
 
-  it("disconnect cleanup deletes an empty room", () => {
+  it("keeps an empty room during the grace period, then sweeps it", () => {
     const rm = new RoomManager(8);
     const { room, player } = rm.createRoom("Only");
-    rm.disconnect(room.code, player.id);
+    rm.disconnect(room.code, player.id, 1000);
+    expect(rm.getRoom(room.code)).toBeDefined(); // grace: not deleted yet
+    rm.sweepEmptyRooms(120000, 1000 + 60000); // within grace
+    expect(rm.getRoom(room.code)).toBeDefined();
+    rm.sweepEmptyRooms(120000, 1000 + 200000); // past grace
     expect(rm.getRoom(room.code)).toBeUndefined();
+  });
+
+  it("lets a dropped player rejoin their seat mid-game (hand & state intact)", () => {
+    const rm = new RoomManager(81);
+    const { room } = rm.createRoom("Host");
+    const j = rm.joinRoom(room.code, "Two");
+    const twoId = "player" in j ? j.player.id : "";
+    rm.joinRoom(room.code, "Three");
+    rm.startGame(room.code, 2, 5);
+    const seat = room.players.find((p) => p.id === twoId)!.seat;
+    const handBefore = room.game!.hands[seat]!.length;
+
+    rm.disconnect(room.code, twoId);
+    expect(room.players.find((p) => p.id === twoId)!.connected).toBe(false);
+
+    const res = rm.rejoin(room.code, twoId);
+    expect("player" in res && res.player.seat).toBe(seat);
+    expect(room.players.find((p) => p.id === twoId)!.connected).toBe(true);
+    expect(room.game!.hands[seat]!.length).toBe(handBefore); // game untouched
+  });
+
+  it("rejoin fails cleanly for an unknown room or seat", () => {
+    const rm = new RoomManager(82);
+    const { room } = rm.createRoom("Host");
+    expect(rm.rejoin("ZZZZ", "x")).toEqual({ error: "That game is no longer available." });
+    expect(rm.rejoin(room.code, "nope")).toEqual({ error: "Your seat is no longer in this game." });
   });
 
   it("adds and removes bots in the lobby and fills a game", () => {

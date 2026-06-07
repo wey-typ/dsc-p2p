@@ -11,7 +11,14 @@ Visual system: [STYLEGUIDE.md](./STYLEGUIDE.md). **63 automated tests** cover th
 rooms, persistence, leaderboard, sonar, mission generation, and a full game over Socket.IO.
 
 ## How to play (hosting a game)
-1. **Start the server** on one computer (the host):
+
+**Easiest (macOS): one-click launcher.** Double-click **`Deep Sea Crew.app`** (or
+`launch-deep-sea-crew.command`) in the `deep-sea-crew` folder. It builds the latest client,
+starts the server, and opens the game in your browser. Keep the Terminal window open while
+playing; close it to stop. (First run: if macOS blocks an "unidentified developer",
+right-click the app → **Open** once.)
+
+1. **Or start the server manually** on one computer (the host):
    ```sh
    export PATH="$HOME/.local/node/current/bin:$PATH"   # if node isn't on your PATH
    cd deep-sea-crew
@@ -76,11 +83,17 @@ Developed with **Node 24 LTS** installed to a local prefix at `~/.local/node/cur
 export PATH="$HOME/.local/node/current/bin:$PATH"
 ```
 
+## Reconnect
+If a phone locks or Wi-Fi blips, the player can rejoin seamlessly: the device remembers a
+session token and re-attaches to the same seat (hand + game state intact). Empty rooms are
+kept for a 2-minute grace period before cleanup. Host role auto-transfers if the host drops.
+
 ## Known limitations / backlog
-- **No mid-game reconnect**: if a player drops during a game, their seat stays empty and
-  it's their turn the game waits. The host can **End** (progress is saved) and re-deal the
-  mission. Host role auto-transfers if the host drops. (Reconnect-by-id is a planned add.)
+- **No join into an in-progress hand**: trick-taking deals all cards to fixed seats, so new
+  players join **between missions** (in the lobby), not mid-hand. (Spectator + auto-seat-next
+  is a possible add.)
+- iPhone can't be the *server* (browsers can't host); use a computer or an Android phone
+  (Termux) as host. Bluetooth isn't viable for browsers.
 - Distress signal and special mission complications (comms-off, etc.) not yet implemented.
-- AI/bot crewmates are a planned optional cycle (the engine is already bot-agnostic).
 - Per-player task *selection* in the lobby is auto-assigned for now.
 - Dev-toolchain only: see DEVLOG for npm-audit handling.

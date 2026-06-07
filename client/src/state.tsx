@@ -37,6 +37,35 @@ function makeSocket(): Socket {
   return io({ autoConnect: true, transports: ["websocket", "polling"] });
 }
 
+// --- Reconnect session (remembered on this device so a dropped player can rejoin) ---
+const SESSION_KEY = "dsc.session";
+interface Session {
+  code: string;
+  playerId: string;
+}
+function saveSession(s: Session): void {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+  } catch {
+    /* ignore */
+  }
+}
+function loadSession(): Session | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? (JSON.parse(raw) as Session) : null;
+  } catch {
+    return null;
+  }
+}
+function clearSession(): void {
+  try {
+    localStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const socketRef = useRef<Socket | null>(null);
   const [connected, setConnected] = useState(false);
@@ -48,7 +77,23 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const socket = makeSocket();
     socketRef.current = socket;
-    socket.on("connect", () => setConnected(true));
+    socket.on("connect", () => {
+      setConnected(true);
+      // If this device has a saved session, try to re-attach to that seat seamlessly.
+      const s = loadSession();
+      if (s?.code && s?.playerId) {
+        socket.emit(EV.RoomRejoin, s, (ack: JoinAck) => {
+          if (ack?.ok) {
+            if (ack.youId) setYouId(ack.youId);
+          } else {
+            clearSession();
+            setRoom(null);
+            setView(null);
+            setYouId(null);
+          }
+        });
+      }
+    });
     socket.on("disconnect", () => setConnected(false));
     socket.on(EV.RoomState, (r: RoomView) => setRoom(r));
     socket.on(EV.GameView, (v: PlayerView) => setView(v));
@@ -65,6 +110,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       new Promise<JoinAck>((resolve) => {
         s().emit(event, payload, (ack: JoinAck) => {
           if (ack?.youId) setYouId(ack.youId);
+          if (ack?.ok && ack.code && ack.youId) saveSession({ code: ack.code, playerId: ack.youId });
           if (ack && !ack.ok && ack.error) setError(ack.error);
           resolve(ack);
         });
@@ -95,6 +141,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       play: (card) => s().emit(EV.GamePlay, { card }),
       communicate: (card) => s().emit(EV.GameCommunicate, { card }),
       leave: () => {
+        clearSession(); // intentional leave — don't auto-rejoin next time
         s().emit(EV.RoomLeave, {});
         setRoom(null);
         setView(null);

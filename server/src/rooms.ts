@@ -39,6 +39,8 @@ export interface Room {
   game: GameState | null;
   mission: Mission | null;
   paused: boolean;
+  /** When the room became fully empty (all disconnected); for grace-period cleanup. */
+  emptySince?: number;
   // Campaign progress (mirrors the persisted record).
   campaignName: string;
   campaignId: string;
@@ -139,16 +141,19 @@ export class RoomManager {
       isBot: false,
     };
     room.players.push(player);
+    room.emptySince = undefined;
     return { room, player };
   }
 
-  disconnect(code: string, playerId: string): void {
+  disconnect(code: string, playerId: string, now = Date.now()): void {
     const room = this.getRoom(code);
     if (!room) return;
     const p = room.players.find((x) => x.id === playerId);
     if (p) p.connected = false;
     if (room.players.every((x) => !x.connected)) {
-      this.rooms.delete(room.code);
+      // Don't delete immediately — keep the room for a grace period so players can
+      // reconnect after a brief drop (phone lock / Wi-Fi blip). Swept later.
+      room.emptySince = now;
       return;
     }
     // If the host dropped, hand the host role to the first still-connected player so
@@ -156,6 +161,29 @@ export class RoomManager {
     if (room.hostId === playerId) {
       const next = room.players.find((x) => x.connected);
       if (next) room.hostId = next.id;
+    }
+  }
+
+  /**
+   * Re-attach a returning player (same playerId) to their existing seat after a drop.
+   * Their hand and the game state are untouched, so play resumes seamlessly.
+   */
+  rejoin(code: string, playerId: string): { room: Room; player: RoomPlayer } | { error: string } {
+    const room = this.getRoom(code);
+    if (!room) return { error: "That game is no longer available." };
+    const player = room.players.find((p) => p.id === playerId);
+    if (!player) return { error: "Your seat is no longer in this game." };
+    player.connected = true;
+    room.emptySince = undefined;
+    return { room, player };
+  }
+
+  /** Delete rooms that have been fully empty longer than the grace period. */
+  sweepEmptyRooms(graceMs = 120000, now = Date.now()): void {
+    for (const room of [...this.rooms.values()]) {
+      if (room.emptySince !== undefined && now - room.emptySince > graceMs) {
+        this.rooms.delete(room.code);
+      }
     }
   }
 

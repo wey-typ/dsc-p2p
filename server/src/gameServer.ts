@@ -13,6 +13,7 @@ import {
   type EvalOptions,
   type CreatePayload,
   type JoinPayload,
+  type RejoinPayload,
   type StartPayload,
   type PlayPayload,
   type CommunicatePayload,
@@ -225,6 +226,15 @@ export function createGameServer(
       broadcastRoom(res.room);
     });
 
+    socket.on(EV.RoomRejoin, (payload: RejoinPayload, ack?: (a: JoinAck) => void) => {
+      const res = rooms.rejoin(payload?.code ?? "", payload?.playerId ?? "");
+      if ("error" in res) return ack?.({ ok: false, error: res.error });
+      socket.join(res.room.code);
+      membership.set(socket.id, { code: res.room.code, playerId: res.player.id });
+      ack?.({ ok: true, code: res.room.code, youId: res.player.id, seat: res.player.seat });
+      broadcastRoom(res.room);
+    });
+
     socket.on(EV.GameStart, (payload: StartPayload) => {
       const m = membership.get(socket.id);
       if (!m) return;
@@ -273,6 +283,11 @@ export function createGameServer(
     socket.on(EV.RoomLeave, () => handleLeave(socket.id));
     socket.on("disconnect", () => handleLeave(socket.id));
   });
+
+  // Periodically clean up rooms that stayed empty past the reconnect grace period.
+  const sweep = setInterval(() => rooms.sweepEmptyRooms(), 30000);
+  sweep.unref?.(); // don't keep the process (or tests) alive
+  io.on("close", () => clearInterval(sweep));
 
   return { httpServer, io, rooms, store: campaignStore, history: historyStore, botLab: lab };
 }

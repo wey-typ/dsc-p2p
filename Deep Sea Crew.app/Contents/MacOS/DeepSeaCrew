@@ -1,0 +1,3 @@
+#!/bin/bash
+# Launches the host via the Terminal command so you can see logs and stop it easily.
+open "/Users/harry/Documents/Claude-Harry/deep-sea-crew/launch-deep-sea-crew.command"

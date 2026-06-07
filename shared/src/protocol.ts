@@ -35,6 +35,7 @@ export const EV = {
   RoomCreate: "room:create",
   RoomJoin: "room:join",
   RoomLeave: "room:leave",
+  RoomRejoin: "room:rejoin",
   RoomAddBot: "room:addbot",
   RoomRemoveBot: "room:removebot",
   RoomSetLevel: "room:setlevel",
@@ -60,6 +61,10 @@ export interface CreatePayload {
 export interface JoinPayload {
   code: string;
   name: string;
+}
+export interface RejoinPayload {
+  code: string;
+  playerId: string;
 }
 export interface StartPayload {
   taskCount?: number;
