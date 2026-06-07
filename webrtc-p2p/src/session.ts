@@ -6,6 +6,7 @@ import {
   buildSolvableGame,
   playCard,
   communicate,
+  chooseBotPlay,
   projectForSeat,
   missionName,
   mulberry32,
@@ -36,6 +37,9 @@ export class HostController {
   private game: GameState | null = null;
   private level = 0;
   private rng: () => number;
+  private botCounter = 0;
+  private botTimer: ReturnType<typeof setTimeout> | null = null;
+  private botDelay = 600; // ms between bot moves (feels natural)
 
   constructor(
     hostName: string,
@@ -136,6 +140,40 @@ export class HostController {
     return this.players.length;
   }
 
+  // ---- bots (host-run; lobby to add/remove, auto-played in-game) ----
+  addBot(): void {
+    if (this.game || this.players.length >= MAX_PLAYERS) return;
+    this.botCounter += 1;
+    this.players.push({ id: `bot-${this.botCounter}`, name: `Bot ${this.botCounter} (bot)`, isBot: true });
+    this.broadcastRoom();
+    this.cb.onChange?.();
+  }
+  removeBot(): void {
+    if (this.game) return;
+    const fromEnd = [...this.players].reverse().findIndex((p) => p.isBot);
+    if (fromEnd < 0) return;
+    this.players.splice(this.players.length - 1 - fromEnd, 1);
+    this.broadcastRoom();
+    this.cb.onChange?.();
+  }
+  isBotTurn(): boolean {
+    return !!this.game && this.game.phase === "playing" && this.players[this.game.turn]?.isBot === true;
+  }
+  /** Play one move for the current bot seat (returns whether it acted). */
+  playBotTurn(): boolean {
+    if (!this.isBotTurn() || !this.game) return false;
+    const seat = this.game.turn;
+    this.applyPlay(seat, chooseBotPlay(this.game, seat));
+    return true;
+  }
+  private scheduleBots(): void {
+    if (this.botTimer || !this.isBotTurn()) return;
+    this.botTimer = setTimeout(() => {
+      this.botTimer = null;
+      this.playBotTurn(); // applyPlay → broadcast → scheduleBots (chains to next bot)
+    }, this.botDelay);
+  }
+
   private applyPlay(seat: number, card: Card): void {
     if (!this.game) return;
     try {
@@ -175,6 +213,7 @@ export class HostController {
       this.cb.onHostView(null);
     }
     this.cb.onChange?.();
+    this.scheduleBots();
   }
   private broadcastRoom(): void {
     const r = this.room();

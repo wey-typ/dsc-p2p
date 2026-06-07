@@ -95,6 +95,31 @@ describe("P2P session", () => {
     expect(host.serialize().game!.hands.reduce((n, h) => n + h.length, 0)).toBe(cardsBefore);
   });
 
+  it("host can add a bot and play solo (bot auto-plays its seat)", async () => {
+    let hostView: PlayerView | null = null;
+    const host = new HostController("Solo", { onHostView: (v) => (hostView = v), onRoom: () => {} }, mulberry32(3));
+    host.addBot();
+    expect(host.playerCount()).toBe(2);
+    host.start(0);
+    await flush();
+    expect(hostView).not.toBeNull();
+
+    for (let i = 0; i < 80 && hostView!.phase === "playing"; i++) {
+      if (host.isBotTurn()) host.playBotTurn();
+      else { const c = hostView!.legalMoves[0]; if (c) host.play(c); }
+      await flush();
+    }
+    expect(["won", "lost"]).toContain(hostView!.phase);
+  });
+
+  it("addBot/removeBot only in the lobby and respect the 5-player cap", async () => {
+    const host = new HostController("H", { onHostView: () => {}, onRoom: () => {} }, mulberry32(1));
+    for (let i = 0; i < 6; i++) host.addBot(); // host + 4 bots = 5 max
+    expect(host.playerCount()).toBe(5);
+    host.removeBot();
+    expect(host.playerCount()).toBe(4);
+  });
+
   it("serialize/restore lets a fresh host resume the game", async () => {
     const p1 = createMemoryPair();
     let hostView: PlayerView | null = null;

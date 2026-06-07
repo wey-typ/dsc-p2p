@@ -97,7 +97,7 @@ export function App() {
         {playing ? (
           <Board view={view} room={room!} isHost onPlay={play} onCommunicate={communicate} onRestart={() => hostRef.current?.restart()} onStart={(lv) => hostRef.current?.start(lv)} />
         ) : (
-          <HostLobby room={room} onSetLevel={(lv) => hostRef.current?.setLevel(lv)} onStart={(lv) => hostRef.current?.start(lv)} />
+          <HostLobby room={room} onSetLevel={(lv) => hostRef.current?.setLevel(lv)} onStart={(lv) => hostRef.current?.start(lv)} onAddBot={() => hostRef.current?.addBot()} onRemoveBot={() => hostRef.current?.removeBot()} />
         )}
       </>
     );
@@ -157,20 +157,26 @@ function HostBar({ room, onInvite }: { room: P2PRoom | null; onInvite: () => voi
   );
 }
 
-function HostLobby({ room, onSetLevel, onStart }: { room: P2PRoom | null; onSetLevel: (lv: number) => void; onStart: (lv: number) => void }) {
+function HostLobby({ room, onSetLevel, onStart, onAddBot, onRemoveBot }: { room: P2PRoom | null; onSetLevel: (lv: number) => void; onStart: (lv: number) => void; onAddBot: () => void; onRemoveBot: () => void }) {
   const level = room?.level ?? 0;
-  const ready = (room?.players.length ?? 1) >= 2;
+  const count = room?.players.length ?? 1;
+  const ready = count >= 2;
+  const hasBot = !!room?.players.some((p) => p.name.endsWith("(bot)"));
   return (
     <div className="screen">
       <div className="panel">
-        <h2>Crew ({room?.players.length ?? 1}/5)</h2>
-        <ul className="crew">{room?.players.map((p) => <li key={p.seat}>🤿 {p.name}{p.seat === 0 ? " · host" : ""}</li>)}</ul>
+        <h2>Crew ({count}/5)</h2>
+        <ul className="crew">{room?.players.map((p) => <li key={p.seat}>{p.name.endsWith("(bot)") ? "🤖" : "🤿"} {p.name}{p.seat === 0 ? " · host" : ""}</li>)}</ul>
+        <div className="level-row">
+          <button className="btn chip" disabled={count >= 5} onClick={onAddBot}>+ Bot</button>
+          <button className="btn chip" disabled={!hasBot} onClick={onRemoveBot}>− Bot</button>
+        </div>
         <div className="level-row">
           <button className="btn chip" disabled={level <= 0} onClick={() => onSetLevel(level - 1)}>−</button>
           <span className="level-label">Level {level + 1}</span>
           <button className="btn chip" disabled={level >= 8} onClick={() => onSetLevel(level + 1)}>+</button>
         </div>
-        <button className="btn primary" disabled={!ready} onClick={() => onStart(level)}>{ready ? "Begin the dive" : "Invite at least one diver"}</button>
+        <button className="btn primary" disabled={!ready} onClick={() => onStart(level)}>{ready ? "Begin the dive" : "Add a bot or invite a diver"}</button>
       </div>
     </div>
   );
