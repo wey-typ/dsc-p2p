@@ -44,9 +44,28 @@ Host browser (tab)                     Guest browser(s)
       the in-memory transport (`session.test.ts`).
 - [x] **WebRTC DataChannel transport** (`rtc.ts`, browser) — non-trickle ICE, LAN-first.
 - [x] **Manual signaling** (`signaling.ts`) — offer/answer ↔ paste-friendly codes (tested).
-- [ ] **React UI**: Host/Join connect screens (code exchange) + game board (NEXT).
+- [x] **React UI**: Host/Join connect screens (invite/answer code exchange) + lobby +
+      full game board (tasks & hand wrap, trick, last-trick, sonar, win/lose). Builds.
+- [x] **Installable PWA** (manifest + service worker via `vite-plugin-pwa`) with the
+      submarine icon — Add to Home Screen + offline.
 - [ ] Browser-local persistence; in-session reconnect.
 - [ ] (Later) QR scan instead of copy/paste; 3–5 players.
+
+## Install on your iPhone (important: needs HTTPS once)
+This is a PWA. Service workers (install + offline) require **HTTPS** — except on localhost.
+So plain `http://<lan-ip>` works as a normal web page but won't install offline. To install:
+
+1. **Build:** `cd webrtc-p2p && npm install && npm run build` → static files in `dist/`.
+2. **Put `dist/` on any HTTPS static host** (free, one-time): drag the folder to Netlify Drop,
+   or use GitHub Pages / Cloudflare Pages / Vercel. (No game server — just static hosting.)
+3. On the iPhone, open that HTTPS URL in Safari → **Share → Add to Home Screen**. It caches
+   for offline use.
+4. Launch from the home screen → **Host a game** → share the invite code (Messages/AirDrop);
+   your friend taps **Join**, pastes it, sends the answer code back, you paste it → connected.
+   From then on it plays **peer-to-peer with no server and no internet**.
+
+**Quick LAN test (no install):** `npm run dev -- --host` and open the printed LAN URL on a
+phone (works as a web page; the offline/install part needs the HTTPS step above).
 
 ## How the 2-player connection will work (copy/paste codes, no server)
 1. Host taps **Host** → app shows an **offer code**. Host shares it (Messages/AirDrop).

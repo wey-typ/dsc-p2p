@@ -899,3 +899,40 @@ Separate `webrtc-p2p/` sub-project (does NOT touch the LAN version). Goal: serve
 - React UI for the P2P app: Host/Join connect screens (offer/answer code exchange) + the
   game board; then `npm run build` verification and on-device play.
 - Browser-local persistence; later QR scanning + 3–5 players.
+
+---
+
+## Cycle 26 — P2P UI + installable PWA (sub-project)
+**Date:** 2026-06-07
+
+### Planned (≤5 goals)
+1. Connect screens: Host shows an invite code, pastes the answer; Guest pastes the offer,
+   shows an answer code (copy/share).
+2. Lobby (host picks level + begins) + full game board from the player's view.
+3. Wire UI to the WebRTC transport + host/guest controllers.
+4. Make it an installable, offline PWA (submarine icon).
+5. Build + verify it serves.
+
+### Developed
+- `webrtc-p2p/src/App.tsx` — connection state machine (Home → Host/Join code exchange →
+  Lobby → Board); wires `createHostPeer`/`createGuestPeer` + `encode/decodeSignal` +
+  `HostController`/`GuestController`.
+- `webrtc-p2p/src/Board.tsx` — compact themed board from `PlayerView`: player chips +
+  sonar signals, tasks (wrap, fully visible), current trick, last trick, turn banner,
+  hand (wrap), sonar mode, win/lose overlay (host restart/next).
+- `index.html`, `main.tsx`, `styles.css` (ocean theme subset).
+- **PWA:** `vite-plugin-pwa` (manifest + auto-update service worker), submarine icons in
+  `public/`; iOS apple-touch/meta tags.
+- README: iPhone install steps + the HTTPS caveat for service workers.
+
+### Honest note (HTTPS)
+PWA install/offline needs an HTTPS origin (or localhost). Plain `http://<lan-ip>` runs as a
+web page but won't register the service worker. So the documented path is: build → host the
+static `dist/` on any free HTTPS host once → Add to Home Screen on iPhone → offline P2P play
+thereafter (gameplay itself is still server-less).
+
+### Verification
+- `npm install && npm run typecheck && npm run build` in `webrtc-p2p/` all pass (54 modules;
+  SW + manifest generated). `npm run preview` serves `/`, `/manifest.webmanifest`, `/sw.js`,
+  icons → all 200. Root suite still **101/101** (P2P core unchanged).
+- Live 2-player WebRTC connect + play is the user's on-device check.
