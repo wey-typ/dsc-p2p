@@ -8,7 +8,8 @@ export function QrCode({ data }: { data: string }) {
       const qr = qrcode(0, "L"); // type 0 = auto-size; "L" = max data capacity
       qr.addData(data);
       qr.make();
-      return qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+      // margin 4 = the spec's required quiet zone (was 2 → scanners struggled).
+      return qr.createSvgTag({ cellSize: 8, margin: 4, scalable: true });
     } catch {
       return null;
     }

@@ -14,10 +14,10 @@ describe("signaling codes", () => {
     expect(await decodeSignal(code)).toEqual(SAMPLE);
   });
 
-  it("compresses large SDP to something smaller than raw base64", async () => {
+  it("compresses large SDP to something much smaller than raw base64", async () => {
     const code = await encodeSignal(SAMPLE);
-    // when CompressionStream is available the tag is "C" and it beats plain base64 length
-    if (code.startsWith("C")) {
+    // when CompressionStream is available the tag is "D" (dictionary + gzip)
+    if (code.startsWith("D")) {
       const rawB64 = Buffer.from(JSON.stringify(SAMPLE), "utf8").toString("base64");
       expect(code.length).toBeLessThan(rawB64.length);
     }
