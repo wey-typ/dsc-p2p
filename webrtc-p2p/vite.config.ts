@@ -9,6 +9,9 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 // Standalone Vite app. Aliases the shared engine to its TS source, and is an installable,
 // offline-capable PWA (so an iPhone can "Add to Home Screen" and host server-less games).
 export default defineConfig({
+  // GitHub Pages project sites serve under /<repo>/. The deploy workflow sets BASE_PATH;
+  // local builds default to "/" (works for Netlify / local preview).
+  base: process.env.BASE_PATH || "/",
   plugins: [
     react(),
     VitePWA({
