@@ -33,6 +33,7 @@ export function App() {
   const [answerCode, setAnswerCode] = useState("");
   const [lost, setLost] = useState(false);
   const [scan, setScan] = useState<null | "offer" | "answer">(null);
+  const [shareApp, setShareApp] = useState(false);
 
   const guestId = useRef(getGuestId());
   const hostRef = useRef<HostController | null>(null);
@@ -88,7 +89,7 @@ export function App() {
   // ---- render ----
   let screen: React.ReactNode = null;
   if (!role) {
-    screen = <Home name={name} setName={setName} onHost={() => name.trim() && makeHost()} onJoin={() => name.trim() && setRole("guest")} canResume={!!hasSaved.current?.game} onResume={() => makeHost(hasSaved.current!)} />;
+    screen = <Home name={name} setName={setName} onHost={() => name.trim() && makeHost()} onJoin={() => name.trim() && setRole("guest")} canResume={!!hasSaved.current?.game} onResume={() => makeHost(hasSaved.current!)} onShare={() => setShareApp(true)} />;
   } else if (role === "host") {
     const playing = !!room && room.phase !== "lobby" && !!view;
     screen = (
@@ -128,12 +129,13 @@ export function App() {
           else { setPasteOffer(text); void guestUseOffer(text); }
         }} />
       )}
+      {shareApp && <ShareApp onClose={() => setShareApp(false)} />}
       {error && <div className="toast" onClick={() => setError(null)}>{error}</div>}
     </div>
   );
 }
 
-function Home({ name, setName, onHost, onJoin, canResume, onResume }: { name: string; setName: (v: string) => void; onHost: () => void; onJoin: () => void; canResume: boolean; onResume: () => void }) {
+function Home({ name, setName, onHost, onJoin, canResume, onResume, onShare }: { name: string; setName: (v: string) => void; onHost: () => void; onJoin: () => void; canResume: boolean; onResume: () => void; onShare: () => void }) {
   return (
     <div className="screen home">
       <header className="brand"><div className="brand-mark">🤿</div><h1>Deep Sea Crew</h1><p className="tagline">Peer-to-peer · 2–5 players · no server</p></header>
@@ -143,7 +145,30 @@ function Home({ name, setName, onHost, onJoin, canResume, onResume }: { name: st
         <button className="btn ghost" disabled={!name.trim()} onClick={onJoin}>Join a game</button>
         {canResume && <button className="btn ghost" onClick={onResume}>↩︎ Resume your hosted game</button>}
       </div>
+      <button className="btn link" onClick={onShare}>📤 Share this game (QR)</button>
       <p className="hint">Connect directly — no Wi-Fi router or server. Add players (and reconnect dropped ones) by sharing a code or QR.</p>
+    </div>
+  );
+}
+
+/** Shows a QR of the app's own URL so others can scan → open → install the game. */
+function ShareApp({ onClose }: { onClose: () => void }) {
+  const url = window.location.origin + window.location.pathname;
+  const canShare = typeof navigator.share === "function";
+  const share = () => {
+    if (canShare) navigator.share({ title: "Deep Sea Crew", text: "Play Deep Sea Crew with me!", url }).catch(() => {});
+    else navigator.clipboard?.writeText(url).catch(() => {});
+  };
+  return (
+    <div className="overlay">
+      <div className="ocard invite">
+        <h2>Share the game</h2>
+        <QrCode data={url} />
+        <p className="hint center">Scan with a phone camera to open the game, then add it to the home screen.</p>
+        <p className="hint" style={{ wordBreak: "break-all", textAlign: "center" }}>{url}</p>
+        <button className="btn primary" onClick={share}>{canShare ? "Share link" : "Copy link"}</button>
+        <button className="btn link" onClick={onClose}>Close</button>
+      </div>
     </div>
   );
 }
