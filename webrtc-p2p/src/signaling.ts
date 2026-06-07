@@ -1,19 +1,65 @@
 /**
  * Manual signaling helpers. With no server, the two peers exchange their WebRTC
- * offer/answer "by hand" as compact codes (copy/paste via Messages/AirDrop, or shown as a
- * QR). These helpers just encode/decode the session description to a paste-friendly string.
+ * offer/answer "by hand" — as a copy/paste code or a scannable QR. WebRTC SDP is large and
+ * very repetitive, so we gzip it first (when the browser supports CompressionStream) to keep
+ * the code small enough to fit a reliably-scannable QR. A 1-char tag records the encoding:
+ *   "C" = gzip + base64   "B" = plain base64   (no tag = legacy plain base64)
  */
 
-export function encodeSignal(desc: RTCSessionDescriptionInit): string {
-  const json = JSON.stringify({ type: desc.type, sdp: desc.sdp });
-  // base64 so it survives copy/paste without newline/whitespace issues.
-  return typeof btoa === "function" ? btoa(json) : Buffer.from(json, "utf8").toString("base64");
+interface SignalDesc {
+  type: RTCSdpType;
+  sdp: string;
 }
 
-export function decodeSignal(code: string): RTCSessionDescriptionInit {
+function b64encodeBytes(bytes: Uint8Array): string {
+  let s = "";
+  for (const b of bytes) s += String.fromCharCode(b);
+  return typeof btoa === "function" ? btoa(s) : Buffer.from(s, "binary").toString("base64");
+}
+function b64decodeBytes(str: string): Uint8Array {
+  const bin = typeof atob === "function" ? atob(str) : Buffer.from(str, "base64").toString("binary");
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+async function gzip(bytes: Uint8Array): Promise<Uint8Array> {
+  const cs = new CompressionStream("gzip");
+  const stream = new Blob([bytes as BlobPart]).stream().pipeThrough(cs);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function gunzip(bytes: Uint8Array): Promise<Uint8Array> {
+  const ds = new DecompressionStream("gzip");
+  const stream = new Blob([bytes as BlobPart]).stream().pipeThrough(ds);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+export async function encodeSignal(desc: RTCSessionDescriptionInit): Promise<string> {
+  const json = JSON.stringify({ type: desc.type, sdp: desc.sdp });
+  try {
+    if (typeof CompressionStream !== "undefined") {
+      const gz = await gzip(new TextEncoder().encode(json));
+      return "C" + b64encodeBytes(gz);
+    }
+  } catch {
+    /* fall through to plain base64 */
+  }
+  return "B" + (typeof btoa === "function" ? btoa(json) : Buffer.from(json, "utf8").toString("base64"));
+}
+
+export async function decodeSignal(code: string): Promise<RTCSessionDescriptionInit> {
   const clean = code.trim();
-  const json =
-    typeof atob === "function" ? atob(clean) : Buffer.from(clean, "base64").toString("utf8");
-  const obj = JSON.parse(json) as { type: RTCSdpType; sdp: string };
+  const tag = clean[0];
+  const body = clean.slice(1);
+  let json: string;
+  if (tag === "C") {
+    json = new TextDecoder().decode(await gunzip(b64decodeBytes(body)));
+  } else if (tag === "B") {
+    json = typeof atob === "function" ? atob(body) : Buffer.from(body, "base64").toString("utf8");
+  } else {
+    // legacy: whole string is plain base64 JSON
+    json = typeof atob === "function" ? atob(clean) : Buffer.from(clean, "base64").toString("utf8");
+  }
+  const obj = JSON.parse(json) as SignalDesc;
   return { type: obj.type, sdp: obj.sdp };
 }

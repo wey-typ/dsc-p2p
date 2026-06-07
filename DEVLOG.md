@@ -936,3 +936,30 @@ thereafter (gameplay itself is still server-less).
   SW + manifest generated). `npm run preview` serves `/`, `/manifest.webmanifest`, `/sw.js`,
   icons → all 200. Root suite still **101/101** (P2P core unchanged).
 - Live 2-player WebRTC connect + play is the user's on-device check.
+
+---
+
+## Cycle 27 — P2P QR scanning + compressed signaling
+**Date:** 2026-06-07
+
+### Planned (≤5 goals)
+1. Compress connection codes so they fit a scannable QR.
+2. QR display of invite/answer codes.
+3. Camera QR scanner that works on iOS Safari.
+4. Wire scan into the connect flow (copy/paste kept as fallback).
+5. Build + verify.
+
+### Developed
+- `signaling.ts` — now async; gzips the SDP via `CompressionStream` (tagged `C`), with a
+  plain-base64 fallback (`B`) and legacy decode. Big SDP → much smaller code → scannable QR.
+- `QrCode.tsx` — renders a code as an SVG QR (`qrcode-generator`, EC level L), with a
+  graceful "too large" fallback.
+- `QrScanner.tsx` — `getUserMedia` + `jsQR` frame-loop scanner (works on iOS Safari, which
+  lacks BarcodeDetector); needs HTTPS/localhost for camera.
+- `App.tsx` — Host shows invite QR + "Scan their answer"; Guest "Scan host's invite" → shows
+  answer QR; copy/paste tucked under a details disclosure. `await`s the async signaling.
+- Tests: `signaling.test.ts` updated for async + verifies compression shrinks the code.
+
+### Verification
+- Root `npm test` → **104/104** (signaling compress/round-trip/legacy). `webrtc-p2p`
+  typecheck + build clean (PWA SW/manifest regenerated). Camera scan is an on-device check.

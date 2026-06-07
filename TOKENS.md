@@ -48,3 +48,4 @@ Each new cycle appends a row with an estimate + a one-line basis. (Cycles 12+ be
 | 24 | Kick + host handover + ocean BGM + tasks-always-visible | ~24k | kick/removePlayer + procedural BGM + Settings + task wrap + tests |
 | 25 | WebRTC P2P foundation (transport/session/rtc/signaling) | ~30k | P2P core + tests + RTC + signaling + config |
 | 26 | P2P UI + installable PWA | ~34k | connect screens + board + lobby + PWA + build verify |
+| 27 | P2P QR scanning + compressed signaling | ~26k | gzip codes + QR display + camera scanner (jsQR) + build |

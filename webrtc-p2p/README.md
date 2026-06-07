@@ -49,7 +49,8 @@ Host browser (tab)                     Guest browser(s)
 - [x] **Installable PWA** (manifest + service worker via `vite-plugin-pwa`) with the
       submarine icon — Add to Home Screen + offline.
 - [ ] Browser-local persistence; in-session reconnect.
-- [ ] (Later) QR scan instead of copy/paste; 3–5 players.
+- [x] QR scan (camera, iOS-compatible via jsQR) + compressed codes — copy/paste still works.
+- [ ] (Later) 3–5 players; in-session reconnect.
 
 ## Install on your iPhone (important: needs HTTPS once)
 This is a PWA. Service workers (install + offline) require **HTTPS** — except on localhost.

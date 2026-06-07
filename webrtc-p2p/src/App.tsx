@@ -5,6 +5,8 @@ import { createHostPeer, createGuestPeer } from "./rtc";
 import { encodeSignal, decodeSignal } from "./signaling";
 import type { P2PRoom } from "./protocol";
 import { Board } from "./Board";
+import { QrCode } from "./QrCode";
+import { QrScanner } from "./QrScanner";
 
 type Role = "host" | "guest" | null;
 
@@ -21,6 +23,7 @@ export function App() {
   const [answerCode, setAnswerCode] = useState(""); // guest shows / host pastes
   const [pasteOffer, setPasteOffer] = useState("");
   const [pasteAnswer, setPasteAnswer] = useState("");
+  const [scan, setScan] = useState<null | "offer" | "answer">(null); // QR scanner mode
 
   const hostRef = useRef<HostController | null>(null);
   const guestRef = useRef<GuestController | null>(null);
@@ -43,7 +46,7 @@ export function App() {
     try {
       const peer = await createHostPeer();
       hostPeerRef.current = peer;
-      setOfferCode(encodeSignal(peer.offer));
+      setOfferCode(await encodeSignal(peer.offer));
       peer.ready.then((t) => {
         host.attachGuest(t);
         setConnected(true);
@@ -53,9 +56,9 @@ export function App() {
     }
   }
 
-  async function hostAcceptAnswer() {
+  async function hostAcceptAnswer(code?: string) {
     try {
-      await hostPeerRef.current?.accept(decodeSignal(pasteAnswer));
+      await hostPeerRef.current?.accept(await decodeSignal(code ?? pasteAnswer));
     } catch {
       flash("That answer code didn't look right.");
     }
@@ -66,10 +69,10 @@ export function App() {
     setRole("guest");
   }
 
-  async function guestUseOffer() {
+  async function guestUseOffer(code?: string) {
     try {
-      const gp = await createGuestPeer(decodeSignal(pasteOffer));
-      setAnswerCode(encodeSignal(gp.answer));
+      const gp = await createGuestPeer(await decodeSignal(code ?? pasteOffer));
+      setAnswerCode(await encodeSignal(gp.answer));
       gp.ready.then((t) => {
         guestRef.current = new GuestController(t, name.trim(), {
           onView: setView,
@@ -94,13 +97,20 @@ export function App() {
   } else if (!connected) {
     screen =
       role === "host" ? (
-        <HostConnect offerCode={offerCode} pasteAnswer={pasteAnswer} setPasteAnswer={setPasteAnswer} onConnect={hostAcceptAnswer} />
+        <HostConnect
+          offerCode={offerCode}
+          pasteAnswer={pasteAnswer}
+          setPasteAnswer={setPasteAnswer}
+          onConnect={() => hostAcceptAnswer()}
+          onScan={() => setScan("answer")}
+        />
       ) : (
         <GuestConnect
           pasteOffer={pasteOffer}
           setPasteOffer={setPasteOffer}
-          onUseOffer={guestUseOffer}
+          onUseOffer={() => guestUseOffer()}
           answerCode={answerCode}
+          onScan={() => setScan("offer")}
         />
       );
   } else if (!room || room.phase === "lobby") {
@@ -125,6 +135,21 @@ export function App() {
     <div className="app">
       <div className="ocean-bg" aria-hidden />
       {screen}
+      {scan && (
+        <QrScanner
+          onClose={() => setScan(null)}
+          onResult={(text) => {
+            setScan(null);
+            if (scan === "answer") {
+              setPasteAnswer(text);
+              void hostAcceptAnswer(text);
+            } else {
+              setPasteOffer(text);
+              void guestUseOffer(text);
+            }
+          }}
+        />
+      )}
       {error && <div className="toast" onClick={() => setError(null)}>{error}</div>}
     </div>
   );
@@ -165,33 +190,54 @@ function CodeBox({ label, code }: { label: string; code: string }) {
   );
 }
 
-function HostConnect({ offerCode, pasteAnswer, setPasteAnswer, onConnect }: { offerCode: string; pasteAnswer: string; setPasteAnswer: (v: string) => void; onConnect: () => void }) {
+function HostConnect({ offerCode, pasteAnswer, setPasteAnswer, onConnect, onScan }: { offerCode: string; pasteAnswer: string; setPasteAnswer: (v: string) => void; onConnect: () => void; onScan: () => void }) {
   return (
     <div className="screen">
       <div className="panel">
-        <h2>1 · Send this to your friend</h2>
-        {offerCode ? <CodeBox label="Your invite code" code={offerCode} /> : <p className="hint">Preparing connection…</p>}
-        <h2>2 · Paste their answer code</h2>
-        <textarea className="code-area" value={pasteAnswer} onChange={(e) => setPasteAnswer(e.target.value)} placeholder="Paste the answer code here" />
-        <button className="btn primary" disabled={!pasteAnswer.trim()} onClick={onConnect}>Connect</button>
+        <h2>1 · Show this to your friend</h2>
+        {offerCode ? (
+          <>
+            <QrCode data={offerCode} />
+            <p className="hint center">Friend scans this, or use the code:</p>
+            <CodeBox label="Invite code" code={offerCode} />
+          </>
+        ) : (
+          <p className="hint">Preparing connection…</p>
+        )}
+        <h2>2 · Get their answer</h2>
+        <button className="btn primary" onClick={onScan}>📷 Scan their answer</button>
+        <details>
+          <summary className="hint">…or paste the answer code</summary>
+          <textarea className="code-area" value={pasteAnswer} onChange={(e) => setPasteAnswer(e.target.value)} placeholder="Paste the answer code here" />
+          <button className="btn ghost" disabled={!pasteAnswer.trim()} onClick={onConnect}>Connect</button>
+        </details>
         <p className="hint">Waiting for your friend to connect…</p>
       </div>
     </div>
   );
 }
 
-function GuestConnect({ pasteOffer, setPasteOffer, onUseOffer, answerCode }: { pasteOffer: string; setPasteOffer: (v: string) => void; onUseOffer: () => void; answerCode: string }) {
+function GuestConnect({ pasteOffer, setPasteOffer, onUseOffer, answerCode, onScan }: { pasteOffer: string; setPasteOffer: (v: string) => void; onUseOffer: () => void; answerCode: string; onScan: () => void }) {
   return (
     <div className="screen">
       <div className="panel">
-        <h2>1 · Paste the host's invite code</h2>
-        <textarea className="code-area" value={pasteOffer} onChange={(e) => setPasteOffer(e.target.value)} placeholder="Paste the invite code here" />
-        <button className="btn primary" disabled={!pasteOffer.trim() || !!answerCode} onClick={onUseOffer}>Generate answer</button>
-        {answerCode && (
+        {!answerCode ? (
           <>
-            <h2>2 · Send this answer back to the host</h2>
-            <CodeBox label="Your answer code" code={answerCode} />
-            <p className="hint">Once the host pastes it, the game connects.</p>
+            <h2>1 · Get the host's invite</h2>
+            <button className="btn primary" onClick={onScan}>📷 Scan host's invite</button>
+            <details>
+              <summary className="hint">…or paste the invite code</summary>
+              <textarea className="code-area" value={pasteOffer} onChange={(e) => setPasteOffer(e.target.value)} placeholder="Paste the invite code here" />
+              <button className="btn ghost" disabled={!pasteOffer.trim()} onClick={onUseOffer}>Generate answer</button>
+            </details>
+          </>
+        ) : (
+          <>
+            <h2>2 · Show this answer to the host</h2>
+            <QrCode data={answerCode} />
+            <p className="hint center">Host scans this, or use the code:</p>
+            <CodeBox label="Answer code" code={answerCode} />
+            <p className="hint">Once the host scans/pastes it, the game connects.</p>
           </>
         )}
       </div>
