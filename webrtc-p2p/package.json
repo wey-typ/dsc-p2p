@@ -1,0 +1,10 @@
+{
+  "name": "@dsc/webrtc-p2p",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Experimental server-less (WebRTC peer-to-peer) host mode. Separate from the shipped LAN version.",
+  "scripts": {
+    "dev": "echo 'Not wired up yet — see README.md TODO' && exit 1"
+  }
+}

@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useGame } from "../state";
 import { CardView } from "../components/CardView";
 import { HowToPlay } from "./HowToPlay";
+import { playSfx } from "../sound";
 import {
   sonarPosition,
   suggestPlay,
@@ -37,10 +38,59 @@ export function Game() {
   const [showHelp, setShowHelp] = useState(false);
   const [hint, setHint] = useState<Suggestion | null>(null);
 
+  const taskRowRef = useRef<HTMLDivElement | null>(null);
+  const sfxPrev = useRef({ plays: 0, trickNo: 0, completed: 0, comms: 0, phase: "", yourTurn: false, init: false });
+
   // Clear a shown hint whenever the table state advances (turn or trick changes).
   useEffect(() => {
     setHint(null);
   }, [view?.turn, view?.trick.plays.length, view?.phase]);
+
+  // Sound effects on meaningful state changes (first run only snapshots, no sound).
+  useEffect(() => {
+    if (!view) return;
+    const p = sfxPrev.current;
+    const yt = view.turn === view.youSeat && view.phase === "playing";
+    const snap = () => {
+      sfxPrev.current = {
+        plays: view.trick.plays.length,
+        trickNo: view.trickNumber,
+        completed: view.completedCount,
+        comms: view.communications.length,
+        phase: view.phase,
+        yourTurn: yt,
+        init: true,
+      };
+    };
+    if (!p.init) return snap();
+    if (view.trick.plays.length > p.plays) playSfx("play");
+    if (view.trickNumber > p.trickNo) playSfx("trick");
+    if (view.completedCount > p.completed) playSfx("task");
+    if (view.communications.length > p.comms) playSfx("sonar");
+    if (view.phase === "won" && p.phase !== "won") playSfx("win");
+    if (view.phase === "lost" && p.phase !== "lost") playSfx("lose");
+    if (yt && !p.yourTurn) playSfx("turn");
+    snap();
+  }, [view]);
+
+  // As tasks complete, auto-scroll the task strip to reveal the next pending task.
+  useEffect(() => {
+    const row = taskRowRef.current;
+    if (!row || !view || view.completedCount === 0) return;
+    const next = row.querySelector<HTMLElement>(".task-pending");
+    if (!next) return;
+    const behavior: ScrollBehavior = document.querySelector(".no-anim") ? "auto" : "smooth";
+    const delta =
+      next.getBoundingClientRect().left -
+      row.getBoundingClientRect().left -
+      (row.clientWidth - next.clientWidth) / 2;
+    row.scrollBy({ left: delta, behavior });
+  }, [view?.completedCount]);
+
+  // When a new level/game starts, reset the task strip to show the first task.
+  useEffect(() => {
+    taskRowRef.current?.scrollTo({ left: 0, behavior: "auto" });
+  }, [room?.level, view?.phase]);
 
   if (!view || !room) return null;
 
@@ -129,7 +179,7 @@ export function Game() {
         <div className="section-label">
           Tasks · {view.completedCount}/{view.taskTotal}
         </div>
-        <div className="task-row">
+        <div className="task-row" ref={taskRowRef}>
           {view.tasks.map((t) => (
             <div key={t.id} className={`task task-${t.status}`}>
               <CardView card={t.card} small />

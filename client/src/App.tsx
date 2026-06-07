@@ -5,12 +5,14 @@ import { Lobby } from "./screens/Lobby";
 import { Game } from "./screens/Game";
 import { Settings } from "./screens/Settings";
 import { Toast } from "./components/Toast";
+import { setSoundEnabled } from "./sound";
 
 const ANIM_KEY = "dsc.animations";
+const SOUND_KEY = "dsc.sound";
 
-function readAnimSetting(): boolean {
+function readSetting(key: string): boolean {
   try {
-    return localStorage.getItem(ANIM_KEY) !== "off";
+    return localStorage.getItem(key) !== "off";
   } catch {
     return true;
   }
@@ -18,7 +20,8 @@ function readAnimSetting(): boolean {
 
 export function App() {
   const { room, connected } = useGame();
-  const [animOn, setAnimOn] = useState(readAnimSetting);
+  const [animOn, setAnimOn] = useState(() => readSetting(ANIM_KEY));
+  const [soundOn, setSoundOn] = useState(() => readSetting(SOUND_KEY));
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
@@ -28,6 +31,15 @@ export function App() {
       /* ignore (private mode) */
     }
   }, [animOn]);
+
+  useEffect(() => {
+    setSoundEnabled(soundOn);
+    try {
+      localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
+    } catch {
+      /* ignore */
+    }
+  }, [soundOn]);
 
   let screen;
   if (!room) screen = <Home />;
@@ -44,7 +56,13 @@ export function App() {
       {screen}
       <Toast />
       {showSettings && (
-        <Settings animOn={animOn} setAnimOn={setAnimOn} onClose={() => setShowSettings(false)} />
+        <Settings
+          animOn={animOn}
+          setAnimOn={setAnimOn}
+          soundOn={soundOn}
+          setSoundOn={setSoundOn}
+          onClose={() => setShowSettings(false)}
+        />
       )}
     </div>
   );

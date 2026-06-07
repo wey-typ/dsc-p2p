@@ -795,3 +795,38 @@ missions by construction**, not just a better bot.
 ### Verification
 - `npm test` → **96/96** (incl. rejoin restores seat + game intact; grace sweep). typecheck
   (both) clean; client builds; launchers pass `bash -n`; server boots.
+
+---
+
+## Cycle 23 — App icon, task autoscroll, sound FX, mobile UI fixes, P2P scaffold
+**Date:** 2026-06-07
+
+### Planned (≤5 goals)
+1. WebRTC P2P as a SEPARATE sub-project scaffold (don't touch the shipped version).
+2. Blue-submarine macOS app icon.
+3. Task strip auto-scroll (reveal next task on completion; reset to first task on new level).
+4. Sound effects + on/off toggle (no perf hit).
+5. Mobile UI fixes: settings/help overlap; wrap hand cards to use vertical space.
+
+### Developed
+- `webrtc-p2p/` — separate sub-project (README plan, package.json, stub `main.ts`). Reuses
+  `@dsc/shared` engine; new transport (WebRTC + QR handshake) + browser-local persistence.
+  **Does not replace the LAN version.**
+- **App icon:** AI-generated blue submarine → `AppIcon.icns` (via `sips`+`iconutil`) in
+  `Deep Sea Crew.app/Contents/Resources`; `CFBundleIconFile` set. Also added web
+  favicon + apple-touch-icon (`client/public/`) for Add-to-Home-Screen.
+- `client/sound.ts` — Web Audio synth (no files): `play/trick/task/turn/sonar/win/lose`
+  cues; `setSoundEnabled`. Triggered from `Game.tsx` by comparing previous→current view.
+- Settings — added a **Sound effects** toggle (default on, per-device, localStorage);
+  App wires `setSoundEnabled` + persistence.
+- Task autoscroll — `Game.tsx` scrolls the task strip to the next `.task-pending` when
+  `completedCount` rises, and resets to the first task when a level/game starts
+  (honors the no-anim setting for smooth vs instant).
+- CSS — `.game-bar` gets `padding-right` + wrap so controls clear the fixed ⚙ gear (fixes
+  the overlap); `.hand` now `flex-wrap`s onto multiple rows (uses the space below) and the
+  hand area is no longer sticky.
+
+### Verification
+- `npm test` → **96/96**; typecheck (both) clean; client builds; server serves app +
+  `/favicon.png` + `/apple-touch-icon.png` (200). Visual items (icon, wrap, autoscroll,
+  sound) are best confirmed on a device/desktop.
