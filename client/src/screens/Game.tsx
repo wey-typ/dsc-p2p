@@ -6,6 +6,7 @@ import { playSfx } from "../sound";
 import {
   sonarPosition,
   suggestPlay,
+  describeObjective,
   type Card,
   type TaskState,
   type Communication,
@@ -17,6 +18,12 @@ function sameCard(a: Card, b: Card) {
 }
 
 const POSITION_LABEL = { highest: "▲ highest", only: "● only", lowest: "▼ lowest" } as const;
+
+const OBJECTIVE_EMOJI = {
+  winTrick: "🥇",
+  winExactly: "🎯",
+  avoidColor: "🚫",
+} as const;
 
 function constraintLabel(t: TaskState): string | null {
   switch (t.constraint.kind) {
@@ -32,11 +39,12 @@ function constraintLabel(t: TaskState): string | null {
 }
 
 export function Game() {
-  const { view, room, play, communicate, startGame, endGame, pause, resume, leave, youId } = useGame();
+  const { view, room, play, communicate, distress, distressPick, startGame, endGame, pause, resume, leave, youId } = useGame();
   // All hooks must run unconditionally (before any early return).
   const [sonarMode, setSonarMode] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [hint, setHint] = useState<Suggestion | null>(null);
+  const [distressAsk, setDistressAsk] = useState(false);
 
   const sfxPrev = useRef({ plays: 0, trickNo: 0, completed: 0, comms: 0, phase: "", yourTurn: false, init: false });
 
@@ -54,7 +62,7 @@ export function Game() {
       sfxPrev.current = {
         plays: view.trick.plays.length,
         trickNo: view.trickNumber,
-        completed: view.completedCount,
+        completed: view.doneCount,
         comms: view.communications.length,
         phase: view.phase,
         yourTurn: yt,
@@ -64,7 +72,7 @@ export function Game() {
     if (!p.init) return snap();
     if (view.trick.plays.length > p.plays) playSfx("play");
     if (view.trickNumber > p.trickNo) playSfx("trick");
-    if (view.completedCount > p.completed) playSfx("task");
+    if (view.doneCount > p.completed) playSfx("task");
     if (view.communications.length > p.comms) playSfx("sonar");
     if (view.phase === "won" && p.phase !== "won") playSfx("win");
     if (view.phase === "lost" && p.phase !== "lost") playSfx("lose");
@@ -87,7 +95,14 @@ export function Game() {
   const canSonar = view.youCanCommunicate && !paused;
   if (sonarMode && !canSonar) setSonarMode(false);
 
+  // Distress: you're in pick mode while a signal is pending and you haven't passed yet.
+  const distressPicking = view.distress !== null && !view.distress.youPicked && view.phase === "playing" && !paused;
+
   function onCardTap(card: Card) {
+    if (distressPicking) {
+      if (card.suit !== "sub") distressPick(card);
+      return;
+    }
     if (sonarMode) {
       if (sonarPosition(view!.hand, card)) {
         communicate(card);
@@ -142,7 +157,7 @@ export function Game() {
             <span className="pc-name">{isOffline(p.seat) ? "⚠ " : ""}{p.name}</span>
             <span className="pc-meta">
               {p.seat === view.commander ? "⚓ " : ""}
-              {view.handCounts[p.seat]} cards
+              {view.handCounts[p.seat]} cards · 🏆{view.tricksWon[p.seat] ?? 0}
             </span>
             {signalFor(p.seat) && (
               <span className="pc-signal">
@@ -157,12 +172,26 @@ export function Game() {
       {/* Tasks */}
       <div className="tasks">
         <div className="section-label">
-          Tasks · {view.completedCount}/{view.taskTotal}
+          Tasks · {view.doneCount}/{view.taskTotal}
+          {view.comms !== "open" && (
+            <span className="comms-note">
+              {view.comms === "silent" ? " · 📡 sonar DEAD" : " · 📡 sonar after trick 2"}
+            </span>
+          )}
         </div>
         <div className="task-row">
           {view.tasks.map((t) => (
             <div key={t.id} className={`task task-${t.status}`}>
-              <CardView card={t.card} small />
+              {t.card ? (
+                <CardView card={t.card} small />
+              ) : (
+                <span className="task-objective" title={describeObjective(t.objective)}>
+                  <span className="task-obj-emoji">
+                    {OBJECTIVE_EMOJI[t.objective.kind as keyof typeof OBJECTIVE_EMOJI] ?? "⭐"}
+                  </span>
+                  <span className="task-obj-text">{describeObjective(t.objective)}</span>
+                </span>
+              )}
               <div className="task-info">
                 <span className="task-owner">{nameOf(t.owner)}</span>
                 {constraintLabel(t) && <span className="task-constraint">{constraintLabel(t)}</span>}
@@ -172,6 +201,37 @@ export function Game() {
           ))}
         </div>
       </div>
+
+      {/* Distress signal — fire (host) or pass a card (everyone) */}
+      {view.canDistress && isHost && !paused && (
+        <div className="distress-area">
+          {!distressAsk ? (
+            <button className="btn chip danger" onClick={() => setDistressAsk(true)}>
+              🆘 Distress signal
+            </button>
+          ) : (
+            <span className="distress-ask">
+              Every diver passes one card…
+              <button className="btn chip" onClick={() => { distress("left"); setDistressAsk(false); }}>
+                ⬅ Pass left
+              </button>
+              <button className="btn chip" onClick={() => { distress("right"); setDistressAsk(false); }}>
+                Pass right ➡
+              </button>
+              <button className="btn chip" onClick={() => setDistressAsk(false)}>Cancel</button>
+            </span>
+          )}
+        </div>
+      )}
+      {view.distress && (
+        <div className="hint-banner distress-banner">
+          🆘 Distress signal — every diver passes one card to the{" "}
+          {view.distress.direction === "left" ? "left ⬅" : "right ➡"}.{" "}
+          {view.distress.youPicked
+            ? `Waiting for ${view.distress.waitingSeats.map(nameOf).join(", ")}…`
+            : "Tap the card you want to pass (submarines can't be passed)."}
+        </div>
+      )}
 
       {/* Current trick */}
       <div className="trick-area">
@@ -221,23 +281,31 @@ export function Game() {
       )}
 
       {/* Turn banner */}
-      <div className={`turn-banner ${yourTurn ? "your-turn" : ""}`}>
+      <div className={`turn-banner ${yourTurn || distressPicking ? "your-turn" : ""}`}>
         {view.phase !== "playing"
           ? view.phase === "won"
             ? "Mission complete!"
             : "Mission failed"
-          : yourTurn
-            ? "Your turn — play a card"
-            : `Waiting for ${nameOf(view.turn)}…`}
+          : view.distress
+            ? distressPicking
+              ? "🆘 Pick a card to pass"
+              : "🆘 Waiting for the crew to pass cards…"
+            : yourTurn
+              ? "Your turn — play a card"
+              : `Waiting for ${nameOf(view.turn)}…`}
       </div>
 
       {/* Your hand */}
       <div className="hand-area">
         <div className="hand-head">
           <span className="section-label">
-            {sonarMode ? "Sonar — tap your highest / only / lowest card" : "Your hand"}
+            {distressPicking
+              ? "Distress — tap the card to pass"
+              : sonarMode
+                ? "Sonar — tap your highest / only / lowest card"
+                : "Your hand"}
           </span>
-          {canSonar && (
+          {canSonar && !distressPicking && (
             <button
               className={`btn chip ${sonarMode ? "danger" : ""}`}
               onClick={() => setSonarMode((m) => !m)}
@@ -245,21 +313,32 @@ export function Game() {
               {sonarMode ? "Cancel" : "📡 Sonar"}
             </button>
           )}
-          {!canSonar && view.sonarUsed[view.youSeat] && (
+          {!canSonar && view.comms === "silent" && <span className="sonar-spent">📡 dead</span>}
+          {!canSonar && view.comms === "delayed" && view.trickNumber < 2 && (
+            <span className="sonar-spent">📡 after trick 2</span>
+          )}
+          {!canSonar && view.comms !== "silent" && view.sonarUsed[view.youSeat] && (
             <span className="sonar-spent">📡 used</span>
           )}
         </div>
         <div className="hand">
           {view.hand.map((card) => {
-            const sonarOk = sonarMode && sonarPosition(view.hand, card) !== null;
-            const playOk = !sonarMode && yourTurn && legal(card);
-            const hinted = !sonarMode && hint?.card != null && sameCard(hint.card, card);
+            const distressOk = distressPicking && card.suit !== "sub";
+            const sonarOk = !distressPicking && sonarMode && sonarPosition(view.hand, card) !== null;
+            const playOk = !distressPicking && !sonarMode && yourTurn && legal(card);
+            const hinted = !distressPicking && !sonarMode && hint?.card != null && sameCard(hint.card, card);
             return (
               <CardView
                 key={`${card.suit}-${card.value}`}
                 card={card}
-                onClick={sonarOk || playOk ? () => onCardTap(card) : undefined}
-                disabled={sonarMode ? !sonarOk : view.phase !== "playing" || !yourTurn || !legal(card)}
+                onClick={distressOk || sonarOk || playOk ? () => onCardTap(card) : undefined}
+                disabled={
+                  distressPicking
+                    ? !distressOk
+                    : sonarMode
+                      ? !sonarOk
+                      : view.phase !== "playing" || !yourTurn || !legal(card)
+                }
                 selected={sonarOk || hinted}
               />
             );

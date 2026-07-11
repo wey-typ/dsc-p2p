@@ -1,7 +1,7 @@
 import type { Card } from "./types.js";
 import { cardsEqual } from "./cards.js";
 import { type GameState, playCard, legalMovesFor } from "./game.js";
-import { chooseBotPlay } from "./bots.js";
+import { chooseBotPlayFast } from "./bots.js";
 
 export interface SolveBudget {
   /** Remaining search nodes; decremented as the DFS explores. */
@@ -42,7 +42,8 @@ export function solveGame(state: GameState, budget: SolveBudget = { nodes: 60000
 function orderedMoves(state: GameState, seat: number): Card[] {
   const moves = legalMovesFor(state, seat);
   if (moves.length <= 1) return moves;
-  const pick = chooseBotPlay(state, seat);
+  // Cheap heuristic pick only — the rollout bot is far too expensive per search node.
+  const pick = chooseBotPlayFast(state, seat);
   return moves.slice().sort((a, b) => keyFor(a, pick) - keyFor(b, pick));
 }
 

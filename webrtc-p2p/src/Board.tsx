@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { sonarPosition, type Card, type PlayerView, type TaskState } from "@dsc/shared";
+import { sonarPosition, describeObjective, type Card, type PlayerView, type TaskState } from "@dsc/shared";
 import type { P2PRoom } from "./protocol";
 
 const SUIT: Record<Card["suit"], { cls: string; glyph: string }> = {
@@ -67,11 +67,15 @@ export function Board({
         ))}
       </div>
 
-      <div className="label">Tasks · {view.completedCount}/{view.taskTotal}</div>
+      <div className="label">Tasks · {view.doneCount}/{view.taskTotal}</div>
       <div className="tasks">
         {view.tasks.map((t) => (
           <div key={t.id} className={`task ${t.status}`}>
-            <CardChip card={t.card} small />
+            {t.card ? (
+              <CardChip card={t.card} small />
+            ) : (
+              <span className="tobj">{describeObjective(t.objective)}</span>
+            )}
             <span className="town">{nameOf(t.owner)}</span>
             {constraintLabel(t) && <span className="tc">{constraintLabel(t)}</span>}
             {t.status === "done" && <span className="tck">✓</span>}

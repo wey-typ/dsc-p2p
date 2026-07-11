@@ -998,3 +998,90 @@ but that reintroduces a server, so it's left as a deliberate trade-off.
 ### Verification
 - Root `npm test` → **106/106** (incl. 3-player + reconnect + persistence). `webrtc-p2p`
   typecheck + build clean (PWA regenerated). Live WebRTC reconnect is the on-device check.
+
+## Cycle 29 — Much smarter bots (rollout heuristic + solver-backed planner)
+
+### Plan
+The bot was the weakest part of the game: a reactive rule bot winning ~10% of bot-only
+games. Goals: (1) fix its blind spots (it could never win a trick by playing its OWN task
+card, and it "delivered" teammates' task cards without knowing if they could take them),
+(2) exploit the fact that live deals are *generated solvable* — the generator already
+knows a winning line.
+
+### Develop
+- `shared/src/bots.ts` — the old reactive bot is kept as **`chooseBotPlayFast`** (still
+  weight-tuned by self-play; used as the teammate model + solver move ordering).
+  **`chooseBotPlay`** is now a 1-trick rollout searcher: for every legal card it rolls the
+  trick to resolution (other seats modeled with the fast bot) and scores the outcome with
+  the real engine — completions, instant-fails, ordering violations and stranded absolutes
+  are all judged by `playCard` itself, so scoring can't drift from the rules.
+- `shared/src/planner.ts` (new) — **`BotPlanner`**, a per-deal stateful brain: follows a
+  known winning line (checked against the play history), re-solves with `solveGame` when a
+  human deviates, marks the deal *hopeless* only when an exhaustive search proves it, and
+  otherwise falls back to the rollout heuristic. Budget-exhausted solves are capped
+  (`maxAttempts`) so it never keeps burning CPU on lost causes.
+- `server/src/rooms.ts` — rooms build live deals with `buildSolvableGameWithLine` and seed
+  the room's planner with the constructive line; bots start each mission already knowing
+  one way to win. Fresh planner per deal; cleared on end/restart.
+- `webrtc-p2p/src/session.ts` — same wiring for the P2P host (smaller 6k-node budget since
+  the host is a phone browser; planner rebuilt without a line on restore).
+- `shared/src/solver.ts` — move ordering now uses the fast bot (the rollout bot is far too
+  expensive per search node).
+- `scripts/eval-bot.ts` + `scripts/eval-planner.ts` (new) — win-rate benchmarks across
+  players 2–5 × levels 0–4.
+
+### Check
+- Benchmarks on RANDOM deals (many genuinely unsolvable at high levels), 800/400 games:
+  old reactive bot **9.9%** → rollout heuristic **44.6%** → planner **57.0%**.
+  With the seeded line on live (solvable) deals, bot games are effectively always won —
+  covered by a test that plays 3–4 players × levels 0–6 to victory.
+- `shared/src/planner.test.ts` (new, 4 tests): wins all seeded live deals; ≥75% unseeded
+  solvable; legal + terminating on unsolvable deals; graceful hopeless fallback.
+- Root `npm test` → **113/113**; `typecheck` + `typecheck:client` + webrtc-p2p typecheck
+  and tests (9/9) clean; client builds; server boots and serves API + client.
+- `npm run train-bots 25` re-tuned the fast-bot weights under the new role (saved to
+  `data/bot/weights.json`).
+
+## Cycle 30 — The extension: special objectives, distress signal, comms complications
+
+### Plan
+Bring the "Mission Deep Sea" extension into the game: (1) task objectives beyond
+win-this-card, (2) the 🆘 distress signal card-pass, (3) sonar restrictions on deep
+missions — all without breaking the guaranteed-solvable deal generator or the bots.
+
+### Develop
+- `shared/src/tasks.ts` — `TaskObjective` union: `capture` (classic), `winTrick` (win
+  trick #N), `winExactly` (finish with exactly N trick wins; 0 = none), `avoidColor`
+  (never capture that colour). `describeObjective()` shared by all UIs. Ordering
+  constraints (▸①Ω) remain capture-only; `completedCount` now counts captures only, so
+  the ordering semantics are unchanged.
+- `shared/src/game.ts` — engine tracks `tricksWon` per seat; objectives resolve with
+  fail-fast rules (wrong first-trick winner, quota exceeded, quota unreachable, forbidden
+  colour captured) and settle whole-mission objectives when the deck runs out. Comms:
+  `comms: open|delayed|silent` gates `canCommunicate` (+ human-readable
+  `communicateBlockedReason`). Distress: `startDistress`/`pickDistressCard` — before the
+  first card, each seat passes one non-sub card left/right, simultaneous transfer, once
+  per mission; play/sonar blocked while pending.
+- Generators — `buildSolvableGameWithLine` derives objectives from the recorded
+  playthrough (trick-1 winner, a seat's real win count, a colour a seat never captured),
+  so the whole task set stays jointly satisfied by the same line. Level bands: objectives
+  from L1 (1) → L3 (2) → L6 (3); sonar delayed at L5–6, dead at L7+.
+- Bots — rollout scorer counts objective completions + shapes toward `winExactly` quotas;
+  `chooseDistressPass` picks the highest non-task colour card; the planner is rebuilt
+  after a distress pass (hands changed → seeded line stale → re-solve).
+- Server — `game:distress` / `game:distresspick` events; host-only fire; bots pass
+  instantly; `isBotTurn` respects the pending-pass block.
+- Client — objective task chips (🥇🎯🚫 + text), per-seat 🏆 trick counts (for quota
+  play), sonar status chips (“📡 after trick 2” / “📡 dead”), 🆘 button with direction
+  picker + pass-a-card hand mode + waiting banner; How-to-play and Level Guide updated.
+  P2P Board renders objective chips too (engine features flow through `@dsc/shared`).
+
+### Check
+- New suites: `objectives.test.ts` (13 tests: each objective's win/fail/fail-fast paths,
+  delayed/silent comms, distress pass mechanics incl. direction, sub rejection,
+  once-per-mission) and a rooms distress integration test (host-only, bots auto-pass,
+  play blocked → resumes, full game completes).
+- The existing planner suite now proves seeded deals at levels 0–6 — *with objectives,
+  ordering AND comms* — are still always won by bot crews.
+- Root `npm test` → **128/128**; shared+server+client typechecks clean; client builds;
+  webrtc-p2p typecheck + 9/9 tests clean.

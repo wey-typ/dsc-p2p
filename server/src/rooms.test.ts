@@ -226,3 +226,49 @@ describe("sanitizeName", () => {
     expect(sanitizeName("x".repeat(50))).toHaveLength(16);
   });
 });
+
+describe("distress signal (extension)", () => {
+  it("host fires it, bots pick instantly, human passes, play resumes with a fresh plan", () => {
+    const rm = new RoomManager(21);
+    const { room, player: host } = rm.createRoom("Host");
+    rm.addBot(room.code);
+    rm.addBot(room.code);
+    rm.startGame(room.code); // solvable mission (no explicit taskCount)
+    expect(room.game!.distress).toBeUndefined();
+
+    // Non-host cannot fire it.
+    const bot = room.players.find((p) => p.isBot)!;
+    expect(rm.distress(room.code, bot.id, "left")).toHaveProperty("error");
+
+    // Host fires: bots pass immediately, only the human is pending.
+    expect(rm.distress(room.code, host.id, "left")).toEqual({ ok: true });
+    expect(room.game!.distress).toBeDefined();
+    const waiting = room.game!.distress!.picks
+      .map((p, s) => (p === null ? s : -1))
+      .filter((s) => s >= 0);
+    expect(waiting).toEqual([host.seat]);
+
+    // Play is blocked until the human passes.
+    expect(rm.isBotTurn(room.code)).toBe(false);
+    const nonSub = room.game!.hands[host.seat]!.find((c) => c.suit !== "sub")!;
+    expect(rm.distressPick(room.code, host.id, nonSub)).toEqual({ ok: true });
+    expect(room.game!.distress).toBeUndefined();
+
+    // Cards actually moved and the game still finishes cleanly with bots.
+    expect(room.game!.hands.flat()).toHaveLength(40);
+    let guard = 0;
+    while (room.game!.phase === "playing" && guard++ < 200) {
+      if (rm.isBotTurn(room.code)) {
+        rm.playBotTurn(room.code);
+      } else {
+        const seat = room.game!.turn;
+        const legal = legalMovesFor(room.game!, seat);
+        rm.play(room.code, host.id, legal[0]!);
+      }
+    }
+    expect(["won", "lost"]).toContain(room.phase);
+
+    // Once per mission.
+    expect(rm.distress(room.code, host.id, "left")).toHaveProperty("error");
+  });
+});

@@ -28,6 +28,8 @@ interface GameContextValue {
   endGame: () => void;
   play: (card: Card) => void;
   communicate: (card: Card) => void;
+  distress: (direction: "left" | "right") => void;
+  distressPick: (card: Card) => void;
   leave: () => void;
 }
 
@@ -149,6 +151,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       },
       play: (card) => s().emit(EV.GamePlay, { card }),
       communicate: (card) => s().emit(EV.GameCommunicate, { card }),
+      distress: (direction) => s().emit(EV.GameDistress, { direction }),
+      distressPick: (card) => s().emit(EV.GameDistressPick, { card }),
       leave: () => {
         clearSession(); // intentional leave — don't auto-rejoin next time
         s().emit(EV.RoomLeave, {});

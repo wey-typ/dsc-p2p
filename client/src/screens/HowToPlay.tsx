@@ -51,11 +51,27 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             <strong> Ω last</strong> (must be completed last).</li>
         </ul>
 
+        <h3>Special objectives ⭐</h3>
+        <ul className="help-list">
+          <li><strong>🥇 Win the first trick</strong> — that diver must take trick #1.</li>
+          <li><strong>🎯 Win exactly N tricks</strong> — go over and you fail instantly; the count settles at the end.</li>
+          <li><strong>🚫 Win no [colour] cards</strong> — that diver must never capture that colour.</li>
+          <li>These appear from Mission 2 onward, alongside the card tasks.</li>
+        </ul>
+
         <h3>Sonar 📡</h3>
         <p className="help-lead">
           Once per mission, between tricks, reveal one colour card as your
           <strong> highest</strong>, <strong>only</strong>, or <strong>lowest</strong> of that colour.
-          No other table talk about your hand!
+          No other table talk about your hand! Deep missions add interference:
+          <strong> sonar delayed</strong> until after trick 2, or <strong>dead</strong> entirely.
+        </p>
+
+        <h3>Distress signal 🆘</h3>
+        <p className="help-lead">
+          Bad deal? Before the first card is played, the host can fire the distress signal:
+          every diver passes <strong>one card</strong> (never a Sub) to the same neighbour.
+          Once per mission — use it wisely.
         </p>
 
         <button className="btn primary" onClick={onClose}>

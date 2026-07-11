@@ -47,6 +47,8 @@ export const EV = {
   GameResume: "game:resume",
   GameEnd: "game:end",
   GameCommunicate: "game:communicate",
+  GameDistress: "game:distress",
+  GameDistressPick: "game:distresspick",
   // server -> client
   RoomState: "room:state",
   GameView: "game:view",
@@ -84,6 +86,14 @@ export interface PlayPayload {
   card: Card;
 }
 export interface CommunicatePayload {
+  card: Card;
+}
+/** Host fires the distress signal: every diver must pass one card this way. */
+export interface DistressPayload {
+  direction: "left" | "right";
+}
+/** A diver chooses the card they pass for the pending distress signal. */
+export interface DistressPickPayload {
   card: Card;
 }
 

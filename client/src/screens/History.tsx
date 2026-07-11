@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CardView } from "../components/CardView";
+import { describeObjective } from "@dsc/shared";
 import type { GameRecord, HistorySummary } from "@dsc/shared";
 
 export function History({ onClose }: { onClose: () => void }) {
@@ -142,7 +143,13 @@ function Review({
       <div className="task-row">
         {rec.tasks.map((tk) => (
           <div key={tk.id} className={`task task-${tk.status}`}>
-            <CardView card={tk.card} small />
+            {tk.card ? (
+              <CardView card={tk.card} small />
+            ) : (
+              <span className="task-objective">
+                <span className="task-obj-text">{describeObjective(tk.objective)}</span>
+              </span>
+            )}
             <span className="task-owner">{nameOf(tk.owner)}</span>
             {tk.status === "done" && <span className="task-check">✓</span>}
           </div>

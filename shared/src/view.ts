@@ -1,7 +1,25 @@
 import type { Card, Trick } from "./types.js";
 import type { TaskState } from "./tasks.js";
-import { type GameState, type GamePhase, type Communication, legalMovesFor, canCommunicate } from "./game.js";
+import {
+  type GameState,
+  type GamePhase,
+  type Communication,
+  type CommsMode,
+  legalMovesFor,
+  canCommunicate,
+  canStartDistress,
+  communicateBlockedReason,
+} from "./game.js";
 import { sortHand } from "./cards.js";
+
+/** What a seat sees of a pending distress signal. */
+export interface DistressView {
+  readonly direction: "left" | "right";
+  /** Whether YOU have already chosen a card to pass. */
+  readonly youPicked: boolean;
+  /** Seats the crew is still waiting on. */
+  readonly waitingSeats: number[];
+}
 
 /** Public info about a seat (no private hand contents). */
 export interface PublicPlayer {
@@ -22,8 +40,13 @@ export interface PlayerView {
   readonly turn: number;
   readonly commander: number;
   readonly trickNumber: number;
+  /** Capture-task completions (feeds the ①②③ ordering badges). */
   readonly completedCount: number;
+  /** Tasks of ANY kind marked done (what the header progress shows). */
+  readonly doneCount: number;
   readonly taskTotal: number;
+  /** Tricks won per seat (public — everyone sees the piles). */
+  readonly tricksWon: number[];
   readonly players: PublicPlayer[];
   /** Card count in each seat's hand, indexed by seat. */
   readonly handCounts: number[];
@@ -43,6 +66,14 @@ export interface PlayerView {
   readonly sonarUsed: boolean[];
   /** Whether YOU may make a sonar signal right now. */
   readonly youCanCommunicate: boolean;
+  /** Sonar restriction in force this mission. */
+  readonly comms: CommsMode;
+  /** Why sonar is blocked for you right now (null = allowed). */
+  readonly sonarBlockedReason: string | null;
+  /** Pending distress signal, if the crew fired one (play is blocked meanwhile). */
+  readonly distress: DistressView | null;
+  /** Whether the distress signal can still be fired (before the first card). */
+  readonly canDistress: boolean;
 }
 
 /** Project the full game state down to what `seat` is allowed to see. */
@@ -55,7 +86,9 @@ export function projectForSeat(state: GameState, seat: number): PlayerView {
     commander: state.commander,
     trickNumber: state.trickNumber,
     completedCount: state.completedCount,
+    doneCount: state.tasks.filter((t) => t.status === "done").length,
     taskTotal: state.tasks.length,
+    tricksWon: state.tricksWon,
     players: state.players.map((p, i) => ({
       seat: i,
       id: p.id,
@@ -72,5 +105,17 @@ export function projectForSeat(state: GameState, seat: number): PlayerView {
     communications: state.communications,
     sonarUsed: state.sonarUsed,
     youCanCommunicate: canCommunicate(state, seat),
+    comms: state.comms,
+    sonarBlockedReason: communicateBlockedReason(state, seat),
+    distress: state.distress
+      ? {
+          direction: state.distress.direction,
+          youPicked: state.distress.picks[seat] !== null,
+          waitingSeats: state.distress.picks
+            .map((p, s) => (p === null ? s : -1))
+            .filter((s) => s >= 0),
+        }
+      : null,
+    canDistress: canStartDistress(state),
   };
 }

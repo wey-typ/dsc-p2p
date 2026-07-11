@@ -4,6 +4,7 @@ import {
   missionTaskCount,
   mulberry32,
   cardId,
+  type Card,
   type TaskConstraint,
 } from "./index.js";
 
@@ -18,15 +19,30 @@ describe("buildMissionForLevel", () => {
     expect(missionTaskCount(50)).toBe(8);
   });
 
-  it("produces distinct colour-card tasks with in-range owners", () => {
+  it("produces distinct colour-card capture tasks with in-range owners", () => {
     for (const level of [0, 3, 6, 9]) {
       const m = buildMissionForLevel(4, level, mulberry32(7));
       expect(m.tasks).toHaveLength(missionTaskCount(level));
-      // all targets are distinct colour cards (never submarines)
-      const ids = m.tasks.map((t) => cardId(t.card));
+      // all capture targets are distinct colour cards (never submarines)
+      const captures = m.tasks.filter((t) => t.objective.kind === "capture");
+      const ids = captures.map((t) => cardId((t.objective as { kind: "capture"; card: Card }).card));
       expect(new Set(ids).size).toBe(ids.length);
-      expect(m.tasks.every((t) => t.card.suit !== "sub")).toBe(true);
+      expect(ids.every((id) => !id.startsWith("sub"))).toBe(true);
       expect(m.tasks.every((t) => t.owner >= 0 && t.owner < 4)).toBe(true);
+    }
+  });
+
+  it("mixes in extension objectives from level 1", () => {
+    expect(
+      buildMissionForLevel(4, 0, mulberry32(1)).tasks.every((t) => t.objective.kind === "capture")
+    ).toBe(true);
+    for (const level of [1, 3, 6]) {
+      const m = buildMissionForLevel(4, level, mulberry32(level));
+      expect(m.tasks.some((t) => t.objective.kind !== "capture")).toBe(true);
+      // objectives never carry ordering constraints
+      expect(
+        m.tasks.filter((t) => t.objective.kind !== "capture").every((t) => t.constraint.kind === "none")
+      ).toBe(true);
     }
   });
 

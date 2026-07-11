@@ -17,6 +17,8 @@ import {
   type StartPayload,
   type PlayPayload,
   type CommunicatePayload,
+  type DistressPayload,
+  type DistressPickPayload,
   type SetLevelPayload,
   type KickPayload,
   type JoinAck,
@@ -283,6 +285,27 @@ export function createGameServer(
       if ("error" in res) return socket.emit(EV.ErrorMsg, { message: res.error });
       const room = rooms.getRoom(m.code);
       if (room) broadcastRoom(room);
+    });
+
+    socket.on(EV.GameDistress, (payload: DistressPayload) => {
+      const m = membership.get(socket.id);
+      if (!m) return;
+      const dir = payload?.direction === "right" ? "right" : "left";
+      const res = rooms.distress(m.code, m.playerId, dir);
+      if ("error" in res) return socket.emit(EV.ErrorMsg, { message: res.error });
+      const room = rooms.getRoom(m.code);
+      if (room) broadcastRoom(room);
+      scheduleBots(m.code); // all-bot crews finish passing instantly
+    });
+
+    socket.on(EV.GameDistressPick, (payload: DistressPickPayload) => {
+      const m = membership.get(socket.id);
+      if (!m) return;
+      const res = rooms.distressPick(m.code, m.playerId, payload.card);
+      if ("error" in res) return socket.emit(EV.ErrorMsg, { message: res.error });
+      const room = rooms.getRoom(m.code);
+      if (room) broadcastRoom(room);
+      scheduleBots(m.code); // play resumes once the last pass lands
     });
 
     socket.on(EV.RoomKick, (payload: KickPayload) => {

@@ -51,6 +51,7 @@ textarea { min-height:84px; }
 .task.failed { background:rgba(231,88,91,.16); border-color:var(--danger); }
 .town { font-size:.7rem; font-weight:700; max-width:64px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .tc { font-size:.6rem; color:var(--gold); } .tck { position:absolute; top:2px; right:4px; color:var(--ok); font-weight:800; }
+.tobj { display:flex; align-items:center; justify-content:center; width:74px; height:56px; border-radius:8px; border:2px dashed rgba(169,205,217,.45); background:rgba(233,246,251,.06); font-size:.58rem; font-weight:700; text-align:center; line-height:1.25; padding:3px; }
 
 .trick { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; min-height:64px; align-items:center; background:rgba(4,20,31,.4); border:1px solid rgba(169,205,217,.12); border-radius:14px; padding:10px; }
 .lasttrick { border-color:rgba(242,193,78,.25); }

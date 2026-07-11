@@ -8,11 +8,14 @@ import {
   createGame,
   playCard,
   communicate,
-  chooseBotPlay,
+  BotPlanner,
+  chooseDistressPass,
+  startDistress,
+  pickDistressCard,
   type BotWeights,
   DEFAULT_WEIGHTS,
   buildSimpleMission,
-  buildSolvableGame,
+  buildSolvableGameWithLine,
   missionName,
   mulberry32,
   MIN_PLAYERS,
@@ -38,6 +41,8 @@ export interface Room {
   phase: "lobby" | "playing" | "won" | "lost";
   game: GameState | null;
   mission: Mission | null;
+  /** Shared bot brain for the current game (solver-backed planner); reset each deal. */
+  planner: BotPlanner | null;
   paused: boolean;
   /** When the room became fully empty (all disconnected); for grace-period cleanup. */
   emptySince?: number;
@@ -117,6 +122,7 @@ export class RoomManager {
       phase: "lobby",
       game: null,
       mission: null,
+      planner: null,
       paused: false,
       campaignName: name,
       campaignId: progress?.id ?? name,
@@ -230,14 +236,21 @@ export class RoomManager {
       name: p.name,
       isBot: p.isBot,
     }));
+    // Fresh bot brain per deal; the node budget keeps worst-case thinking time per bot
+    // move well under a second.
+    room.planner = new BotPlanner({ nodes: 20000, maxAttempts: 2 });
     if (taskCount !== undefined) {
       // Explicit taskCount forces a simple unordered mission (used by tests / quick play).
       const mission = buildSimpleMission(n, taskCount, rng, `mission-${room.level + 1}`);
       room.mission = mission;
       room.game = createGame(enginePlayers, mission, rng);
     } else {
-      // Build a GUARANTEED-SOLVABLE mission for this level so every level is winnable.
-      room.game = buildSolvableGame(enginePlayers, room.level, rng);
+      // Build a GUARANTEED-SOLVABLE mission for this level so every level is winnable,
+      // and hand the constructive winning line to the bot planner: bots start the game
+      // already knowing one way to win and only re-solve if a human deviates from it.
+      const { state, line } = buildSolvableGameWithLine(enginePlayers, room.level, rng);
+      room.game = state;
+      room.planner.seedPlan(state, line);
       room.mission = {
         id: `mission-${room.level + 1}`,
         name: `Mission ${room.level + 1} · ${missionName(room.level)}`,
@@ -256,6 +269,7 @@ export class RoomManager {
     this.persist(room);
     room.game = null;
     room.mission = null;
+    room.planner = null;
     room.phase = "lobby";
     room.paused = false;
     return { ok: true };
@@ -372,7 +386,7 @@ export class RoomManager {
   /** True if it's currently a bot seat's turn in an active, unpaused game. */
   isBotTurn(code: string): boolean {
     const room = this.getRoom(code);
-    if (!room || !room.game || room.paused || room.game.phase !== "playing") return false;
+    if (!room || !room.game || room.paused || room.game.phase !== "playing" || room.game.distress) return false;
     const seatPlayer = room.players.find((p) => p.seat === room.game!.turn);
     return seatPlayer?.isBot === true;
   }
@@ -382,10 +396,58 @@ export class RoomManager {
     const room = this.getRoom(code);
     if (!room || !room.game || !this.isBotTurn(code)) return false;
     const seat = room.game.turn;
-    const card = chooseBotPlay(room.game, seat, this.weightsProvider());
+    room.planner ??= new BotPlanner({ nodes: 20000, maxAttempts: 2 });
+    const card = room.planner.choose(room.game, seat, this.weightsProvider());
     const player = room.players.find((p) => p.seat === seat)!;
     const res = this.play(code, player.id, card);
     return "ok" in res;
+  }
+
+  /** Host fires the distress signal: every diver must pass one card `direction`. */
+  distress(code: string, playerId: string, direction: "left" | "right"): { ok: true } | { error: string } {
+    const room = this.getRoom(code);
+    if (!room || !room.game) return { error: "No active game." };
+    if (room.paused) return { error: "Game is paused." };
+    if (room.hostId !== playerId) return { error: "Only the host can fire the distress signal." };
+    try {
+      room.game = startDistress(room.game, direction);
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : "Cannot fire the distress signal." };
+    }
+    this.botDistressPicks(room);
+    return { ok: true };
+  }
+
+  /** A diver picks the card they pass for the pending distress signal. */
+  distressPick(code: string, playerId: string, card: Card): { ok: true } | { error: string } {
+    const room = this.getRoom(code);
+    if (!room || !room.game) return { error: "No active game." };
+    const player = room.players.find((p) => p.id === playerId);
+    if (!player) return { error: "You are not in this room." };
+    try {
+      room.game = pickDistressCard(room.game, player.seat, card);
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : "Cannot pass that card." };
+    }
+    this.afterDistressMaybeComplete(room);
+    return { ok: true };
+  }
+
+  /** Bots choose their distress pass immediately (humans pick at their own pace). */
+  private botDistressPicks(room: Room): void {
+    for (const p of room.players) {
+      if (!room.game?.distress) break;
+      if (!p.isBot || room.game.distress.picks[p.seat]) continue;
+      room.game = pickDistressCard(room.game, p.seat, chooseDistressPass(room.game, p.seat));
+    }
+    this.afterDistressMaybeComplete(room);
+  }
+
+  /** Once every seat has passed, hands changed — the seeded plan is stale, so replan. */
+  private afterDistressMaybeComplete(room: Room): void {
+    if (room.game && !room.game.distress) {
+      room.planner = new BotPlanner({ nodes: 20000, maxAttempts: 2 });
+    }
   }
 
   communicate(code: string, playerId: string, card: Card): { ok: true } | { error: string } {

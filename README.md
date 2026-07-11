@@ -7,8 +7,27 @@ original implementation with its own engine, art, missions, and naming).
 
 ## Status
 Playable. Built in progressive Plan→Develop→Check cycles — see [DEVLOG.md](./DEVLOG.md).
-Visual system: [STYLEGUIDE.md](./STYLEGUIDE.md). **63 automated tests** cover the engine,
-rooms, persistence, leaderboard, sonar, mission generation, and a full game over Socket.IO.
+Visual system: [STYLEGUIDE.md](./STYLEGUIDE.md). **128 automated tests** cover the engine,
+rooms, persistence, leaderboard, sonar, mission generation, bots, extension objectives,
+distress signal, and a full game over Socket.IO.
+
+## Bots
+Add bot divers from the lobby to fill seats. The bot has three layers:
+- **Planner** (`shared/src/planner.ts`): live deals are generated solvable, and the bots
+  are seeded with the constructive winning line; they follow it and, if a human deviates,
+  re-solve with the cooperative full-information solver (bounded node budget).
+- **Rollout heuristic** (`chooseBotPlay`): when no plan is available, each legal card is
+  evaluated by rolling the trick to completion (teammates modeled by the fast bot) and
+  letting the real engine score the result — so it can win a trick with its *own* task
+  card, deliver a teammate's task only when they can actually take it, and avoid dumping
+  a card that hands a task to the wrong seat.
+- **Fast reactive bot** (`chooseBotPlayFast`): the original rule-based bot, kept as the
+  teammate model and the solver's move ordering. Its soft weights are tuned by self-play
+  (`npm run train-bots`).
+
+In bot-only self-play over *random* (not guaranteed-solvable) deals, the win rate went
+from ~10% to ~57% across 2–5 players and levels 0–4; on live (solvable) deals with the
+seeded line, bot crews win essentially always.
 
 ## How to play (hosting a game)
 
@@ -40,8 +59,14 @@ Tap **How to play** on the home screen for the in-app rules + suit legend.
 - **Tasks**: a task is done when its owner wins the trick containing that card. Wrong
   capture = instant mission fail. Ordering badges: ▸ relative order, ① absolute position,
   Ω must-be-last.
+- **Special objectives** (from Mission 2): alongside card tasks, missions demand feats —
+  🥇 *win the first trick*, 🎯 *win exactly N tricks* (over = instant fail), 🚫 *win no
+  cards of a colour*. All generated jointly-solvable with the deal.
 - **Sonar** (📡, once per mission, between tricks): reveal one colour card as your
-  highest / only / lowest of that colour. No other talk about your hand.
+  highest / only / lowest of that colour. No other talk about your hand. Deep missions
+  add **comms complications**: sonar delayed until after trick 2 (L6–7) or dead (L8+).
+- **Distress signal** (🆘, host, once per mission, before the first card): every diver
+  passes one card (never a submarine) left or right — a rescue for hopeless deals.
 - **Controls** (host): Pause / Resume / End, plus Next-mission or Retry after each game.
 - **Progress** saves per crew name; missions get harder each level. **Leaderboard** ranks
   crews by missions cleared.
