@@ -15,4 +15,5 @@ export * from "./training.js";
 export * from "./report.js";
 export * from "./advisor.js";
 export * from "./solver.js";
+export * from "./planner.js";
 export * from "./solvable.js";

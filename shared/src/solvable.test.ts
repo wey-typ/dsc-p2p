@@ -39,10 +39,12 @@ describe("buildSolvableGame", () => {
     expect(state.tasks.length).toBeLessThanOrEqual(missionTaskCount(6));
     expect(state.tasks.length).toBeGreaterThan(0);
     for (const t of state.tasks) {
-      expect(t.card.suit).not.toBe("sub");
+      if (t.objective.kind === "capture") expect(t.card!.suit).not.toBe("sub");
       expect(t.owner).toBeGreaterThanOrEqual(0);
       expect(t.owner).toBeLessThan(4);
     }
+    // level 6 mixes in extension objectives alongside the captures
+    expect(state.tasks.some((t) => t.objective.kind !== "capture")).toBe(true);
     // exactly one 'last' at level >= 2
     expect(state.tasks.filter((t) => t.constraint.kind === "last")).toHaveLength(1);
   });

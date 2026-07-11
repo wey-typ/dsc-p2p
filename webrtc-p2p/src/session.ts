@@ -3,10 +3,10 @@ import {
   type Player,
   type Card,
   type PlayerView,
-  buildSolvableGame,
+  buildSolvableGameWithLine,
   playCard,
   communicate,
-  chooseBotPlay,
+  BotPlanner,
   projectForSeat,
   missionName,
   mulberry32,
@@ -35,6 +35,12 @@ export class HostController {
   private guests = new Map<number, Transport>(); // seat -> transport
   private pending = new Set<Transport>(); // attached, awaiting hello
   private game: GameState | null = null;
+  /**
+   * Shared bot brain for the current deal. The host runs in a browser, so the solve
+   * budget is kept small; new deals are seeded with the generator's winning line, which
+   * makes bot moves instant unless a human wanders off the plan.
+   */
+  private planner: BotPlanner | null = null;
   private level = 0;
   private rng: () => number;
   private botCounter = 0;
@@ -129,11 +135,15 @@ export class HostController {
       return;
     }
     this.level = Math.max(0, level);
-    this.game = buildSolvableGame(this.players, this.level, this.rng);
+    const { state, line } = buildSolvableGameWithLine(this.players, this.level, this.rng);
+    this.game = state;
+    this.planner = new BotPlanner({ nodes: 6000, maxAttempts: 2 });
+    this.planner.seedPlan(state, line);
     this.broadcast();
   }
   restart(): void {
     this.game = null;
+    this.planner = null;
     this.broadcast();
   }
   playerCount(): number {
@@ -163,7 +173,8 @@ export class HostController {
   playBotTurn(): boolean {
     if (!this.isBotTurn() || !this.game) return false;
     const seat = this.game.turn;
-    this.applyPlay(seat, chooseBotPlay(this.game, seat));
+    this.planner ??= new BotPlanner({ nodes: 6000, maxAttempts: 2 });
+    this.applyPlay(seat, this.planner.choose(this.game, seat));
     return true;
   }
   private scheduleBots(): void {
@@ -233,6 +244,8 @@ export class HostController {
     this.players = saved.players?.length ? saved.players : this.players;
     this.level = saved.level ?? 0;
     this.game = saved.game ?? null;
+    // The seeded winning line isn't persisted; a fresh planner re-solves as needed.
+    this.planner = this.game ? new BotPlanner({ nodes: 6000, maxAttempts: 2 }) : null;
     this.broadcast();
   }
 

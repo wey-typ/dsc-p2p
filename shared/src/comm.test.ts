@@ -29,9 +29,12 @@ function state(hands: Card[][], tasks: TaskState[] = []): GameState {
     turn: 0,
     trickNumber: 0,
     completedCount: 0,
+    tricksWon: [0, 0, 0],
     phase: "playing",
     communications: [],
     sonarUsed: [false, false, false],
+    comms: "open",
+    distressUsed: false,
     expectedTrickSize: hands.filter((h) => h.length > 0).length,
   };
 }
@@ -60,7 +63,7 @@ describe("communicate", () => {
   it("rejects a second signal from the same seat", () => {
     let s = state([[B(3), B(7)], [B(1)], [B(2)]]);
     s = communicate(s, 0, B(7));
-    expect(() => communicate(s, 0, B(3))).toThrow(/Cannot communicate/);
+    expect(() => communicate(s, 0, B(3))).toThrow(/already used your sonar/);
   });
 
   it("rejects signalling a middle card or a submarine", () => {
@@ -73,6 +76,6 @@ describe("communicate", () => {
     let s = state([[B(3), B(7)], [B(1), B(2)], [B(4), B(5)]]);
     s = playCard(s, 0, B(3)); // a card is now on the table
     expect(canCommunicate(s, 1)).toBe(false);
-    expect(() => communicate(s, 1, B(2))).toThrow(/Cannot communicate/);
+    expect(() => communicate(s, 1, B(2))).toThrow(/only between tricks/);
   });
 });

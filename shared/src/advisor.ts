@@ -46,9 +46,19 @@ function readyFromView(view: PlayerView, task: TaskState): boolean {
 
 function cheapest(cards: readonly Card[], view: PlayerView): Card {
   const isTask = (c: Card) =>
-    view.tasks.some((t) => t.status === "pending" && cardsEqual(t.card, c));
+    view.tasks.some((t) => t.status === "pending" && t.card !== undefined && cardsEqual(t.card, c));
   const cost = (c: Card) => (isTask(c) ? 10 : 0) + (isTrump(c) ? 6 : 0) + c.value * 0.4;
   return cards.slice().sort((a, b) => cost(a) - cost(b))[0]!;
+}
+
+/** Strongest card: trump beats colour, then value (for must-win objective tricks). */
+function strongest(cards: readonly Card[]): Card {
+  return cards.slice().sort((a, b) => {
+    const ta = isTrump(a) ? 1 : 0;
+    const tb = isTrump(b) ? 1 : 0;
+    if (ta !== tb) return tb - ta;
+    return b.value - a.value;
+  })[0]!;
 }
 
 /**
@@ -69,8 +79,39 @@ export function suggestPlay(view: PlayerView): Suggestion {
   const winsWith = (card: Card) =>
     trickWinner({ ...view.trick, plays: [...view.trick.plays, { seat, card }] }) === seat;
 
+  // Extension objective: someone must win THIS trick number (usually the first).
+  const mustWinTrick = view.tasks.find(
+    (t) =>
+      t.status === "pending" &&
+      t.objective.kind === "winTrick" &&
+      t.objective.trick === view.trickNumber + 1
+  );
+  if (mustWinTrick) {
+    if (mustWinTrick.owner === seat) {
+      const winning = moves.filter(winsWith);
+      if (winning.length > 0) {
+        const card = view.trick.plays.length + 1 >= view.players.length ? cheapest(winning, view) : strongest(winning);
+        return {
+          card,
+          reason: `YOU must win trick #${view.trickNumber + 1} (mission objective). Play ${cardName(card)} to take it.`,
+        };
+      }
+      const card = cheapest(moves, view);
+      return {
+        card,
+        reason: `You must win this trick but can't beat what's on the table — play ${cardName(card)} and hope a teammate ducks under you.`,
+      };
+    }
+    const losing = moves.filter((c) => !winsWith(c));
+    const card = cheapest(losing.length > 0 ? losing : moves, view);
+    return {
+      card,
+      reason: `${nameOf(mustWinTrick.owner)} must win trick #${view.trickNumber + 1} — stay OUT of it. Duck with ${cardName(card)}.`,
+    };
+  }
+
   const inTrick = view.tasks.filter(
-    (t) => t.status === "pending" && view.trick.plays.some((p) => cardsEqual(p.card, t.card))
+    (t) => t.status === "pending" && t.card !== undefined && view.trick.plays.some((p) => cardsEqual(p.card, t.card!))
   );
 
   if (inTrick.length > 0) {
@@ -83,13 +124,13 @@ export function suggestPlay(view: PlayerView): Suggestion {
         const card = cheapest(winning, view);
         return {
           card,
-          reason: `Win this trick to capture YOUR task ${cardName(target.card)} — it's on the table and ready. Play ${cardName(card)} (the cheapest card that still wins).`,
+          reason: `Win this trick to capture YOUR task ${cardName(target.card!)} — it's on the table and ready. Play ${cardName(card)} (the cheapest card that still wins).`,
         };
       }
       const card = cheapest(moves, view);
       return {
         card,
-        reason: `Your task ${cardName(target.card)} is here but you can't win this trick — play low (${cardName(card)}) and aim to capture it another time.`,
+        reason: `Your task ${cardName(target.card!)} is here but you can't win this trick — play low (${cardName(card)}) and aim to capture it another time.`,
       };
     }
     const losing = moves.filter((c) => !winsWith(c));
@@ -98,7 +139,7 @@ export function suggestPlay(view: PlayerView): Suggestion {
     if (teammate) {
       return {
         card,
-        reason: `DON'T win this trick — it contains ${nameOf(teammate.owner)}'s task ${cardName(teammate.card)}. If you take it, their task fails. Duck with ${cardName(card)}.`,
+        reason: `DON'T win this trick — it contains ${nameOf(teammate.owner)}'s task ${cardName(teammate.card!)}. If you take it, their task fails. Duck with ${cardName(card)}.`,
       };
     }
     return {
@@ -111,13 +152,13 @@ export function suggestPlay(view: PlayerView): Suggestion {
   if (leading) {
     const deliverable = moves.filter((c) => {
       const t = view.tasks.find(
-        (x) => x.status === "pending" && cardsEqual(x.card, c) && x.owner !== seat
+        (x) => x.status === "pending" && x.card !== undefined && cardsEqual(x.card, c) && x.owner !== seat
       );
       return t !== undefined && readyFromView(view, t);
     });
     if (deliverable.length > 0) {
       const card = cheapest(deliverable, view);
-      const owner = view.tasks.find((t) => cardsEqual(t.card, card))!.owner;
+      const owner = view.tasks.find((t) => t.card !== undefined && cardsEqual(t.card, card))!.owner;
       return {
         card,
         reason: `Lead ${cardName(card)} — it's ${nameOf(owner)}'s task and they can grab it now while everyone else ducks. Good way to clear a task.`,

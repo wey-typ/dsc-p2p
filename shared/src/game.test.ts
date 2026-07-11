@@ -18,7 +18,14 @@ const PLAYERS: Player[] = [
 ];
 
 function mkTask(card: Card, owner: number, constraint: MissionTask["constraint"], i: number): TaskState {
-  return { id: `t${i}-${card.suit}-${card.value}`, card, owner, constraint, status: "pending" };
+  return {
+    id: `t${i}-${card.suit}-${card.value}`,
+    objective: { kind: "capture", card },
+    card,
+    owner,
+    constraint,
+    status: "pending",
+  };
 }
 
 /** Build a controlled state with explicit hands (no shuffle) so plays are scriptable. */
@@ -32,9 +39,12 @@ function makeState(hands: Card[][], tasks: TaskState[], leader = 0): GameState {
     turn: leader,
     trickNumber: 0,
     completedCount: 0,
+    tricksWon: new Array(hands.length).fill(0),
     phase: "playing",
     communications: [],
     sonarUsed: new Array(hands.length).fill(false),
+    comms: "open",
+    distressUsed: false,
     expectedTrickSize: hands.filter((h) => h.length > 0).length,
   };
 }
