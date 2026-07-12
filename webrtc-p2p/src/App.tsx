@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import type { Card, PlayerView } from "@dsc/shared";
+import { useEffect, useRef, useState } from "react";
+import { MAX_LEVEL, type Card, type PlayerView } from "@dsc/shared";
 import { HostController, GuestController, type SavedHostState } from "./session";
 import { createHostPeer, createGuestPeer } from "./rtc";
 import { encodeSignal, decodeSignal } from "./signaling";
@@ -94,7 +94,7 @@ export function App() {
     const playing = !!room && room.phase !== "lobby" && !!view;
     screen = (
       <>
-        <HostBar room={room} onInvite={openInvite} />
+        <HostBar room={room} onInvite={openInvite} playing={playing} onEnd={() => hostRef.current?.restart()} />
         {playing ? (
           <Board view={view} room={room!} isHost onPlay={play} onCommunicate={communicate} onRestart={() => hostRef.current?.restart()} onStart={(lv) => hostRef.current?.start(lv)} />
         ) : (
@@ -173,11 +173,46 @@ function ShareApp({ onClose }: { onClose: () => void }) {
   );
 }
 
-function HostBar({ room, onInvite }: { room: P2PRoom | null; onInvite: () => void }) {
+function HostBar({
+  room,
+  onInvite,
+  playing = false,
+  onEnd,
+}: {
+  room: P2PRoom | null;
+  onInvite: () => void;
+  playing?: boolean;
+  onEnd?: () => void;
+}) {
+  // "■ End" needs a second tap to confirm; the armed state disarms after a moment.
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  useEffect(() => {
+    if (!confirmEnd) return;
+    const t = setTimeout(() => setConfirmEnd(false), 3500);
+    return () => clearTimeout(t);
+  }, [confirmEnd]);
+
   return (
     <div className="hostbar">
       <span className="hb-crew">Crew: {room?.players.map((p) => p.name).join(", ") || "—"}</span>
-      <button className="btn chip" onClick={onInvite}>➕ Invite / Reconnect</button>
+      <span className="hb-actions">
+        <button className="btn chip" onClick={onInvite}>➕ Invite / Reconnect</button>
+        {playing && onEnd && (
+          confirmEnd ? (
+            <button
+              className="btn chip danger confirm-end"
+              onClick={() => {
+                setConfirmEnd(false);
+                onEnd();
+              }}
+            >
+              ⚠ Confirm end?
+            </button>
+          ) : (
+            <button className="btn chip danger" onClick={() => setConfirmEnd(true)}>■ End</button>
+          )
+        )}
+      </span>
     </div>
   );
 }
@@ -199,7 +234,7 @@ function HostLobby({ room, onSetLevel, onStart, onAddBot, onRemoveBot }: { room:
         <div className="level-row">
           <button className="btn chip" disabled={level <= 0} onClick={() => onSetLevel(level - 1)}>−</button>
           <span className="level-label">Level {level + 1}</span>
-          <button className="btn chip" disabled={level >= 8} onClick={() => onSetLevel(level + 1)}>+</button>
+          <button className="btn chip" disabled={level >= MAX_LEVEL} onClick={() => onSetLevel(level + 1)}>+</button>
         </div>
         <button className="btn primary" disabled={!ready} onClick={() => onStart(level)}>{ready ? "Begin the dive" : "Add a bot or invite a diver"}</button>
       </div>
