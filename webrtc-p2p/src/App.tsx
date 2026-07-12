@@ -5,6 +5,7 @@ import { createHostPeer, createGuestPeer } from "./rtc";
 import { encodeSignal, decodeSignal } from "./signaling";
 import type { P2PRoom } from "./protocol";
 import { Board } from "./Board";
+import { checkForAppUpdate } from "./update";
 import { QrCode } from "./QrCode";
 import { QrScanner } from "./QrScanner";
 
@@ -136,6 +137,7 @@ export function App() {
 }
 
 function Home({ name, setName, onHost, onJoin, canResume, onResume, onShare }: { name: string; setName: (v: string) => void; onHost: () => void; onJoin: () => void; canResume: boolean; onResume: () => void; onShare: () => void }) {
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null);
   return (
     <div className="screen home">
       <header className="brand"><div className="brand-mark">🤿</div><h1>Deep Sea Crew</h1><p className="tagline">Peer-to-peer · 2–5 players · no server</p></header>
@@ -147,7 +149,13 @@ function Home({ name, setName, onHost, onJoin, canResume, onResume, onShare }: {
       </div>
       <button className="btn link" onClick={onShare}>📤 Share this game (QR)</button>
       <p className="hint">Connect directly — no Wi-Fi router or server. Add players (and reconnect dropped ones) by sharing a code or QR.</p>
-      <p className="version">{__BUILD_INFO__}</p>
+      <p className="version">
+        {__BUILD_INFO__}
+        <button className="btn link update-btn" onClick={() => void checkForAppUpdate(setUpdateStatus)}>
+          🔄 Check for update
+        </button>
+      </p>
+      {updateStatus && <p className="update-status">{updateStatus}</p>}
     </div>
   );
 }

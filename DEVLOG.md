@@ -1225,3 +1225,18 @@ misclick from killing a mission, and the game page had no invite/QR.
   shows 💡 Hint / ? Help / 📡 Sonar; hint banner renders advisor advice; help overlay
   opens/closes. p2p typecheck + 9/9 tests + build clean (version string verified in the
   bundle); LAN client typecheck + build clean.
+
+## Cycle 37 — Manual "Check for update" button in the PWA
+
+### Develop
+- `webrtc-p2p/src/update.ts`: forces `registration.update()`, then rides the standard
+  statechange/controllerchange flow — update found → installs (autoUpdate SW skips
+  waiting) → page reloads itself into the new build. Clear status line for every path:
+  checking / update found / up-to-date ✓ / offline / no SW (plain reload fallback).
+- Home screen: "🔄 Check for update" button under the version footer. Versions → 0.2.1.
+
+### Check
+- Against a real active service worker (`vite preview` of the built PWA): up-to-date
+  path shows "You're on the latest version ✓"; then rebuilt dist under the running
+  preview, clicked the button — update detected, installed, auto-reloaded, footer
+  showed the new v0.2.1. p2p typecheck + 9/9 tests + build clean.
