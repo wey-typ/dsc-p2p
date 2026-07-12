@@ -1085,3 +1085,31 @@ missions — all without breaking the guaranteed-solvable deal generator or the 
   ordering AND comms* — are still always won by bot crews.
 - Root `npm test` → **128/128**; shared+server+client typechecks clean; client builds;
   webrtc-p2p typecheck + 9/9 tests clean.
+
+## Cycle 31 — Extension toggle + polish
+
+### Plan
+Let crews choose classic vs extension rules per room, and sweep up small UX debts found
+in review.
+
+### Develop
+- `MissionOptions { extension }` threaded through `buildMissionForLevel` and
+  `buildSolvableGameWithLine`; classic mode = captures only, comms "open", distress off
+  (`Mission.distressAllowed` → `GameState.distressAllowed` → `canStartDistress`).
+- Room setting `extension` (default on) + `room:setextension` host event (lobby only);
+  exposed on `RoomView`; mission generation honours it.
+- Lobby: ⭐ "Extension rules" checkbox for the host (read-only status for guests);
+  level notes and Level Guide adapt to the toggle.
+- Polish pass: fail reasons now use diver NAMES ("won by Alpha, but it belongs to
+  Bravo") instead of seat numbers; `distressPick` respects pause; the hint advisor
+  understands the extension (duck when your win-exactly quota is full, don't capture
+  your forbidden colour, bank safe tricks when short of quota, win-the-first-trick
+  guidance).
+
+### Check
+- New tests: classic-mode generators produce no objectives / open comms / no distress
+  (engine + rooms), host-only toggle, locked mid-game. Root `npm test` → **130/130**;
+  all typechecks + client build clean.
+- Live browser verification (preview): toggle round-trips through the server; classic
+  game showed 5 card tasks / no 🆘 / no comms note; extension game showed 🥇🎯 chips +
+  🆘; full distress pass (banner → tap card → hands passed → play resumed) worked.

@@ -43,6 +43,12 @@ export function missionTaskCount(level: number): number {
   return Math.min(2 + level, 8);
 }
 
+/** Options shared by the mission builders. */
+export interface MissionOptions {
+  /** Extension rules: special objectives, comms complications, distress (default true). */
+  extension?: boolean;
+}
+
 /**
  * How many of the mission's tasks are "extension" objectives (win-the-first-trick,
  * win-exactly-N, win-no-colour) rather than classic card captures.
@@ -78,14 +84,14 @@ export function missionName(level: number): string {
 }
 
 /** Human-readable rules introduced at this level (for UI). */
-export function missionNotes(level: number): string[] {
+export function missionNotes(level: number, extension = true): string[] {
   const notes: string[] = [];
-  if (level >= 1) notes.push("Special objectives join the dive (first trick / trick quotas / forbidden colours).");
+  if (extension && level >= 1) notes.push("Special objectives join the dive (first trick / trick quotas / forbidden colours).");
   if (level >= 2) notes.push("One card task must be completed LAST.");
   if (level >= 4) notes.push("Most card tasks must be completed in numbered order.");
-  if (level >= 5 && level < 7) notes.push("Sonar interference: signals only after the first two tricks.");
+  if (extension && level >= 5 && level < 7) notes.push("Sonar interference: signals only after the first two tricks.");
   if (level >= 6) notes.push("The ① task must be the very first completed.");
-  if (level >= 7) notes.push("Sonar is DEAD: no signals this mission.");
+  if (extension && level >= 7) notes.push("Sonar is DEAD: no signals this mission.");
   if (notes.length === 0) notes.push("Complete the tasks in any order.");
   return notes;
 }
@@ -117,10 +123,12 @@ function randomObjective(numPlayers: number, i: number, rng: () => number): Task
 export function buildMissionForLevel(
   numPlayers: number,
   level: number,
-  rng: () => number
+  rng: () => number,
+  opts: MissionOptions = {}
 ): Mission {
+  const extension = opts.extension !== false;
   const count = missionTaskCount(level);
-  const objectiveCount = Math.min(objectiveCountForLevel(level), count - 1);
+  const objectiveCount = extension ? Math.min(objectiveCountForLevel(level), count - 1) : 0;
   const captureCount = count - objectiveCount;
 
   const pool = shuffle(colorCards(), rng);
@@ -163,6 +171,7 @@ export function buildMissionForLevel(
     id: `mission-${level + 1}`,
     name: `Mission ${level + 1} · ${missionName(level)}`,
     tasks,
-    comms: commsForLevel(level),
+    comms: extension ? commsForLevel(level) : "open",
+    distressAllowed: extension,
   };
 }

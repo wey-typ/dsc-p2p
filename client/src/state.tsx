@@ -22,6 +22,7 @@ interface GameContextValue {
   removeBot: () => void;
   kick: (playerId: string) => void;
   setLevel: (level: number) => void;
+  setExtension: (extension: boolean) => void;
   restart: () => void;
   pause: () => void;
   resume: () => void;
@@ -139,6 +140,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       removeBot: () => s().emit(EV.RoomRemoveBot, {}),
       kick: (playerId) => s().emit(EV.RoomKick, { playerId }),
       setLevel: (level) => s().emit(EV.RoomSetLevel, { level }),
+      setExtension: (extension) => s().emit(EV.RoomSetExtension, { extension }),
       restart: () => {
         setView(null);
         s().emit(EV.GameRestart, {});

@@ -51,6 +51,8 @@ export interface Mission {
   readonly tasks: readonly MissionTask[];
   /** Sonar restriction for this mission (default "open"). */
   readonly comms?: CommsMode;
+  /** Whether the distress signal may be used this mission (default true). */
+  readonly distressAllowed?: boolean;
 }
 
 /** Full game state. Hands are private per seat; the server filters before sending. */
@@ -82,6 +84,8 @@ export interface GameState {
   distress?: DistressState;
   /** Whether the crew has already fired its once-per-mission distress signal. */
   distressUsed: boolean;
+  /** Whether the distress signal is available at all (extension rules on/off). */
+  distressAllowed: boolean;
   /**
    * How many cards the current trick will hold = seats that had cards when the trick
    * began. Lets the final tricks of an uneven (3-player) deal resolve with fewer cards.
@@ -151,6 +155,7 @@ export function makeGameState(
     sonarUsed: new Array(players.length).fill(false),
     comms: mission.comms ?? "open",
     distressUsed: false,
+    distressAllowed: mission.distressAllowed ?? true,
     expectedTrickSize: countSeatsWithCards(hands),
   };
 }
@@ -214,6 +219,7 @@ export function communicate(state: GameState, seat: number, card: Card): GameSta
 export function canStartDistress(state: GameState): boolean {
   return (
     state.phase === "playing" &&
+    state.distressAllowed &&
     !state.distress &&
     !state.distressUsed &&
     state.trickNumber === 0 &&
@@ -334,12 +340,14 @@ function resolveCompletedTrick(state: GameState): GameState {
       cardsInTrick.some((c) => t.card && cardsEqual(c, t.card))
   );
 
+  const seatName = (s: number) => state.players[s]?.name ?? `seat ${s}`;
+
   // Wrong player won a required card -> instant fail.
   const wrong = resolving.find((t) => t.owner !== winner);
   if (wrong) {
     return fail(
       state,
-      `Task failed: ${cardId(wrong.card!)} was won by seat ${winner}, not its owner seat ${wrong.owner}.`
+      `Task failed: ${cardId(wrong.card!)} was won by ${seatName(winner)}, but it belongs to ${seatName(wrong.owner)}.`
     );
   }
 
@@ -363,7 +371,7 @@ function resolveCompletedTrick(state: GameState): GameState {
     if (t.owner !== winner) {
       return fail(
         s,
-        `Task failed: ${s.players[t.owner]?.name ?? `seat ${t.owner}`} had to win trick #${trickNo}, but seat ${winner} won it.`
+        `Task failed: ${seatName(t.owner)} had to win trick #${trickNo}, but ${seatName(winner)} won it.`
       );
     }
     s = markDone(s, t.id, trickNo);
@@ -374,7 +382,10 @@ function resolveCompletedTrick(state: GameState): GameState {
     if (t.status !== "pending" || t.objective.kind !== "avoidColor") continue;
     const suit = t.objective.suit;
     if (t.owner === winner && cardsInTrick.some((c) => c.suit === suit)) {
-      return fail(s, `Task failed: ${describeObjective(t.objective)} — a ${suit} card was captured.`);
+      return fail(
+        s,
+        `Task failed: ${seatName(t.owner)} had to ${describeObjective(t.objective).toLowerCase()}, but captured one.`
+      );
     }
   }
 
@@ -382,7 +393,10 @@ function resolveCompletedTrick(state: GameState): GameState {
   for (const t of s.tasks) {
     if (t.status !== "pending" || t.objective.kind !== "winExactly") continue;
     if (s.tricksWon[t.owner]! > t.objective.count) {
-      return fail(s, `Task failed: ${describeObjective(t.objective)} — too many tricks won.`);
+      return fail(
+        s,
+        `Task failed: ${seatName(t.owner)} had to ${describeObjective(t.objective).toLowerCase()} — too many tricks won.`
+      );
     }
   }
 

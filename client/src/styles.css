@@ -297,6 +297,13 @@ button { font-family: inherit; }
 .task-obj-text { font-size: 0.6rem; line-height: 1.25; color: var(--foam); font-weight: 700; }
 .comms-note { color: var(--gold); font-weight: 700; }
 
+/* Extension rules toggle (lobby) */
+.ext-toggle { margin: 6px 0 2px; display: flex; justify-content: center; }
+.ext-label { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; }
+.ext-label input { width: 18px; height: 18px; accent-color: var(--gold); cursor: pointer; }
+.ext-label small { display: block; }
+.ext-label.readonly { cursor: default; }
+
 /* Distress signal */
 .distress-area { display: flex; justify-content: center; }
 .distress-ask {

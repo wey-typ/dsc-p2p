@@ -20,6 +20,7 @@ import {
   type DistressPayload,
   type DistressPickPayload,
   type SetLevelPayload,
+  type SetExtensionPayload,
   type KickPayload,
   type JoinAck,
 } from "@dsc/shared";
@@ -258,6 +259,9 @@ export function createGameServer(
     socket.on(EV.RoomRemoveBot, () => hostAction(socket.id, (code) => rooms.removeBot(code)));
     socket.on(EV.RoomSetLevel, (payload: SetLevelPayload) =>
       hostAction(socket.id, (code) => rooms.setLevel(code, payload?.level ?? 0))
+    );
+    socket.on(EV.RoomSetExtension, (payload: SetExtensionPayload) =>
+      hostAction(socket.id, (code) => rooms.setExtension(code, payload?.extension === true))
     );
 
     socket.on(EV.GameRestart, () => hostAction(socket.id, (code) => rooms.restart(code)));

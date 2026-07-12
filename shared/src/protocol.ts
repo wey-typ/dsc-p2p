@@ -27,6 +27,8 @@ export interface RoomView {
   readonly level: number;
   readonly attempts: number;
   readonly cleared: number;
+  /** Extension rules (special objectives, distress, comms complications) on/off. */
+  readonly extension: boolean;
 }
 
 // ---- socket event names (single source of truth for client + server) ----
@@ -40,6 +42,7 @@ export const EV = {
   RoomAddBot: "room:addbot",
   RoomRemoveBot: "room:removebot",
   RoomSetLevel: "room:setlevel",
+  RoomSetExtension: "room:setextension",
   GameStart: "game:start",
   GamePlay: "game:play",
   GameRestart: "game:restart",
@@ -78,6 +81,9 @@ export interface StartPayload {
 }
 export interface SetLevelPayload {
   level: number;
+}
+export interface SetExtensionPayload {
+  extension: boolean;
 }
 
 /** Highest selectable named level (0-based). 9 named missions: levels 0..8. */

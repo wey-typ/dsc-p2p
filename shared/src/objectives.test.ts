@@ -44,6 +44,7 @@ function makeState(hands: Card[][], tasks: TaskState[], opts?: Partial<GameState
     sonarUsed: new Array(hands.length).fill(false),
     comms: "open",
     distressUsed: false,
+    distressAllowed: true,
     expectedTrickSize: hands.filter((h) => h.length > 0).length,
     ...opts,
   };
@@ -208,5 +209,28 @@ describe("distress signal", () => {
     let s = makeState(HANDS(), []);
     s = playCard(s, 0, B(9));
     expect(canStartDistress(s)).toBe(false);
+  });
+});
+
+describe("extension toggle", () => {
+  it("classic mode strips objectives, comms restrictions, and distress", async () => {
+    const { buildSolvableGameWithLine, buildMissionForLevel, mulberry32 } = await import("./index.js");
+    const players = PLAYERS.map((p) => ({ ...p, isBot: true }));
+    for (const level of [1, 4, 8]) {
+      const { state } = buildSolvableGameWithLine(players, level, mulberry32(level), { extension: false });
+      expect(state.tasks.every((t) => t.objective.kind === "capture")).toBe(true);
+      expect(state.comms).toBe("open");
+      expect(state.distressAllowed).toBe(false);
+      expect(canStartDistress(state)).toBe(false);
+
+      const m = buildMissionForLevel(3, level, mulberry32(level), { extension: false });
+      expect(m.tasks.every((t) => t.objective.kind === "capture")).toBe(true);
+      expect(m.comms).toBe("open");
+      expect(m.distressAllowed).toBe(false);
+    }
+    // Default (extension on) still mixes objectives in.
+    const on = buildSolvableGameWithLine(players, 4, mulberry32(4));
+    expect(on.state.tasks.some((t) => t.objective.kind !== "capture")).toBe(true);
+    expect(on.state.distressAllowed).toBe(true);
   });
 });

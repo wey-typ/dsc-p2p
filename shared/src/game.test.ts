@@ -45,6 +45,7 @@ function makeState(hands: Card[][], tasks: TaskState[], leader = 0): GameState {
     sonarUsed: new Array(hands.length).fill(false),
     comms: "open",
     distressUsed: false,
+    distressAllowed: true,
     expectedTrickSize: hands.filter((h) => h.length > 0).length,
   };
 }
@@ -75,7 +76,7 @@ describe("win / lose basics", () => {
     const s = makeState([[B(5)], [B(3)], [G(9)]], [mkTask(B(5), 1, { kind: "none" }, 0)]);
     const end = playTrick(s, [B(5), B(3), G(9)]);
     expect(end.phase).toBe("lost");
-    expect(end.failReason).toMatch(/won by seat 0/);
+    expect(end.failReason).toMatch(/won by Alpha, but it belongs to Bravo/);
   });
 
   it("loses if cards run out with a task still pending", () => {

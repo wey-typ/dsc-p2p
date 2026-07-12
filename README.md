@@ -59,6 +59,8 @@ Tap **How to play** on the home screen for the in-app rules + suit legend.
 - **Tasks**: a task is done when its owner wins the trick containing that card. Wrong
   capture = instant mission fail. Ordering badges: ▸ relative order, ① absolute position,
   Ω must-be-last.
+- **Extension rules toggle**: the host can switch the ⭐ extension (objectives, distress,
+  comms complications) on/off in the lobby — off gives the classic capture-only game.
 - **Special objectives** (from Mission 2): alongside card tasks, missions demand feats —
   🥇 *win the first trick*, 🎯 *win exactly N tricks* (over = instant fail), 🚫 *win no
   cards of a colour*. All generated jointly-solvable with the deal.

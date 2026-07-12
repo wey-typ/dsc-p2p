@@ -3,7 +3,13 @@ import { deal } from "./cards.js";
 import { legalMoves, trickWinner } from "./trick.js";
 import { type Mission, type GameState, makeGameState } from "./game.js";
 import { type MissionTask, type TaskObjective } from "./tasks.js";
-import { missionTaskCount, missionName, objectiveCountForLevel, commsForLevel } from "./missions.js";
+import {
+  missionTaskCount,
+  missionName,
+  objectiveCountForLevel,
+  commsForLevel,
+  type MissionOptions,
+} from "./missions.js";
 
 /** Seats still holding cards. */
 function countWithCards(hands: readonly Card[][]): number {
@@ -125,16 +131,23 @@ function deriveObjectives(
  * performed, ordering constraints follow the real completion order). This is how
  * cooperative puzzles are made winnable — random constrained missions usually aren't.
  */
-export function buildSolvableGame(players: Player[], level: number, rng: () => number): GameState {
-  return buildSolvableGameWithLine(players, level, rng).state;
+export function buildSolvableGame(
+  players: Player[],
+  level: number,
+  rng: () => number,
+  opts: MissionOptions = {}
+): GameState {
+  return buildSolvableGameWithLine(players, level, rng, opts).state;
 }
 
 /** As `buildSolvableGame`, but also returns the constructive winning line (for tests/proof). */
 export function buildSolvableGameWithLine(
   players: Player[],
   level: number,
-  rng: () => number
+  rng: () => number,
+  opts: MissionOptions = {}
 ): SolvableGame {
+  const extension = opts.extension !== false;
   const n = players.length;
   const { hands, commander } = deal(n, rng);
   const plan = simulateRawTricks(hands, commander, rng);
@@ -152,12 +165,9 @@ export function buildSolvableGameWithLine(
     .sort((a, b) => a.trickIndex - b.trickIndex);
 
   const total = Math.min(missionTaskCount(level), candidateTricks.length);
-  const objectives = deriveObjectives(
-    n,
-    plan,
-    Math.min(objectiveCountForLevel(level), Math.max(0, total - 1)),
-    rng
-  );
+  const objectives = extension
+    ? deriveObjectives(n, plan, Math.min(objectiveCountForLevel(level), Math.max(0, total - 1)), rng)
+    : [];
   const K = Math.max(1, total - objectives.length);
 
   // Spread the K chosen capture tricks across the timeline for a varied completion order.
@@ -197,7 +207,8 @@ export function buildSolvableGameWithLine(
     id: `mission-${level + 1}`,
     name: `Mission ${level + 1} · ${missionName(level)}`,
     tasks,
-    comms: commsForLevel(level),
+    comms: extension ? commsForLevel(level) : "open",
+    distressAllowed: extension,
   };
   return {
     state: makeGameState(players, hands, commander, mission),

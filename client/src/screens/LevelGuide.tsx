@@ -5,10 +5,12 @@ export function LevelGuide({
   onClose,
   onPick,
   currentLevel,
+  extension = true,
 }: {
   onClose: () => void;
   onPick?: (level: number) => void;
   currentLevel?: number;
+  extension?: boolean;
 }) {
   const levels = Array.from({ length: MAX_LEVEL + 1 }, (_, i) => i);
   return (
@@ -30,7 +32,7 @@ export function LevelGuide({
                 {lv === currentLevel && <span className="tag you">selected</span>}
               </div>
               <ul className="guide-notes">
-                {missionNotes(lv).map((n, i) => (
+                {missionNotes(lv, extension).map((n, i) => (
                   <li key={i}>{n}</li>
                 ))}
               </ul>

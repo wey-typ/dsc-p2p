@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "deepsea",
-      "runtimeExecutable": "/Users/harry/.local/node/current/bin/npm",
+      "runtimeExecutable": "npm",
       "runtimeArgs": ["start", "-w", "@dsc/server"],
       "port": 3000
     }

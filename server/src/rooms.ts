@@ -52,6 +52,8 @@ export interface Room {
   level: number;
   attempts: number;
   cleared: number;
+  /** Extension rules (special objectives, distress, comms complications) on/off. */
+  extension: boolean;
 }
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no ambiguous 0/O/1/I
@@ -129,6 +131,7 @@ export class RoomManager {
       level: progress?.level ?? 0,
       attempts: progress?.attempts ?? 0,
       cleared: progress?.cleared ?? 0,
+      extension: true,
     };
     this.rooms.set(code, room);
     return { room, player };
@@ -248,7 +251,9 @@ export class RoomManager {
       // Build a GUARANTEED-SOLVABLE mission for this level so every level is winnable,
       // and hand the constructive winning line to the bot planner: bots start the game
       // already knowing one way to win and only re-solve if a human deviates from it.
-      const { state, line } = buildSolvableGameWithLine(enginePlayers, room.level, rng);
+      const { state, line } = buildSolvableGameWithLine(enginePlayers, room.level, rng, {
+        extension: room.extension,
+      });
       room.game = state;
       room.planner.seedPlan(state, line);
       room.mission = {
@@ -278,6 +283,15 @@ export class RoomManager {
   /** Alias kept for the client's "restart/back to lobby" control. */
   restart(code: string): { ok: true } | { error: string } {
     return this.endGame(code);
+  }
+
+  /** Toggle the extension rules (lobby only): special objectives, distress, comms. */
+  setExtension(code: string, extension: boolean): { ok: true } | { error: string } {
+    const room = this.getRoom(code);
+    if (!room) return { error: "Room not found." };
+    if (room.phase !== "lobby") return { error: "Can only change rules in the lobby." };
+    room.extension = extension === true;
+    return { ok: true };
   }
 
   /** Choose which level to play next (lobby only). Clamped to 0..MAX_LEVEL. */
@@ -422,6 +436,7 @@ export class RoomManager {
   distressPick(code: string, playerId: string, card: Card): { ok: true } | { error: string } {
     const room = this.getRoom(code);
     if (!room || !room.game) return { error: "No active game." };
+    if (room.paused) return { error: "Game is paused." };
     const player = room.players.find((p) => p.id === playerId);
     if (!player) return { error: "You are not in this room." };
     try {
@@ -496,6 +511,7 @@ export class RoomManager {
       level: room.level,
       attempts: room.attempts,
       cleared: room.cleared,
+      extension: room.extension,
     };
   }
 }
