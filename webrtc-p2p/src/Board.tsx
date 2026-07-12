@@ -1,5 +1,14 @@
-import { useState } from "react";
-import { sonarPosition, describeObjective, type Card, type PlayerView, type TaskState } from "@dsc/shared";
+import { useEffect, useState } from "react";
+import {
+  sonarPosition,
+  describeObjective,
+  describeModifier,
+  suggestPlay,
+  type Card,
+  type PlayerView,
+  type Suggestion,
+  type TaskState,
+} from "@dsc/shared";
 import type { P2PRoom } from "./protocol";
 
 const SUIT: Record<Card["suit"], { cls: string; glyph: string }> = {
@@ -47,6 +56,14 @@ export function Board({
   onStart: (lv: number) => void;
 }) {
   const [sonar, setSonar] = useState(false);
+  const [hint, setHint] = useState<Suggestion | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
+
+  // Clear a shown hint whenever the table state advances.
+  useEffect(() => {
+    setHint(null);
+  }, [view?.turn, view?.trick.plays.length, view?.phase]);
+
   if (!view) return <div className="screen"><p className="hint">Loading…</p></div>;
 
   const yourTurn = view.turn === view.youSeat && view.phase === "playing";
@@ -68,6 +85,13 @@ export function Board({
       </div>
 
       <div className="label">Tasks · {view.doneCount}/{view.taskTotal}</div>
+      {view.modifiers.length > 0 && (
+        <div className="modlist">
+          {view.modifiers.map((m, i) => (
+            <div key={i} className="modchip">{describeModifier(m)}</div>
+          ))}
+        </div>
+      )}
       <div className="tasks">
         {view.tasks.map((t) => (
           <div key={t.id} className={`task ${t.status}`}>
@@ -108,6 +132,10 @@ export function Board({
         </>
       )}
 
+      {hint && hint.reason && (
+        <div className="hintbar" onClick={() => setHint(null)}>💡 {hint.reason}</div>
+      )}
+
       <div className={`turn ${yourTurn ? "you" : ""}`}>
         {view.phase !== "playing"
           ? view.phase === "won" ? "Mission complete!" : "Mission failed"
@@ -116,7 +144,13 @@ export function Board({
 
       <div className="hand-head">
         <span className="label">Your hand</span>
-        {canSonar && <button className="btn chip" onClick={() => setSonar((s) => !s)}>{sonar ? "Cancel" : "📡 Sonar"}</button>}
+        <span className="hh-actions">
+          {yourTurn && (
+            <button className="btn chip gold" onClick={() => setHint(suggestPlay(view))}>💡 Hint</button>
+          )}
+          <button className="btn chip" onClick={() => setShowHelp(true)}>? Help</button>
+          {canSonar && <button className="btn chip" onClick={() => setSonar((s) => !s)}>{sonar ? "Cancel" : "📡 Sonar"}</button>}
+        </span>
       </div>
       <div className="hand">
         {view.hand.map((card) => {
@@ -136,6 +170,39 @@ export function Board({
           );
         })}
       </div>
+
+      <p className="version">{__BUILD_INFO__}</p>
+
+      {showHelp && (
+        <div className="overlay" onClick={() => setShowHelp(false)}>
+          <div className="ocard help" onClick={(e) => e.stopPropagation()}>
+            <h2>How to dive 🤿</h2>
+            <p className="hint left">
+              Team game — you all win or lose together. Each trick, everyone plays one card;
+              follow the led colour if you can. Highest ⬡ Sub wins, else the highest card of
+              the led colour. The winner leads next.
+            </p>
+            <h3>Tasks</h3>
+            <p className="hint left">
+              A card task is done when its OWNER wins the trick containing that card — the
+              wrong diver taking it fails the mission instantly. Badges: ▸ relative order,
+              ① exact position, Ω last. Objectives: 🥇 win the first trick · 🎯 win exactly
+              N tricks (over = fail) · 🚫 never capture that colour.
+            </p>
+            <h3>Deep complications (Missions 10+)</h3>
+            <p className="hint left">
+              🌀 Undertow tricks: the LOWEST card of the led colour wins and Subs sink.
+              ⚓ Commander's burden: the ⚓ diver must not win the first 3 tricks.
+            </p>
+            <h3>Sonar 📡</h3>
+            <p className="hint left">
+              Once per mission, between tricks: reveal one colour card as your highest /
+              only / lowest of that colour. No other table talk!
+            </p>
+            <button className="btn primary" onClick={() => setShowHelp(false)}>Got it</button>
+          </div>
+        </div>
+      )}
 
       {view.phase !== "playing" && (
         <div className="overlay">

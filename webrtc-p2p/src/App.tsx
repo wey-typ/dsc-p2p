@@ -147,6 +147,7 @@ function Home({ name, setName, onHost, onJoin, canResume, onResume, onShare }: {
       </div>
       <button className="btn link" onClick={onShare}>📤 Share this game (QR)</button>
       <p className="hint">Connect directly — no Wi-Fi router or server. Add players (and reconnect dropped ones) by sharing a code or QR.</p>
+      <p className="version">{__BUILD_INFO__}</p>
     </div>
   );
 }

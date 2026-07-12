@@ -2,9 +2,25 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "node:path";
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
+
+// Version string baked into the bundle at build time (shown in the app footer so
+// players can tell which build their installed PWA is running).
+function buildInfo(): string {
+  const version = JSON.parse(readFileSync(path.resolve(dir, "package.json"), "utf8")).version;
+  let sha = "dev";
+  try {
+    sha = execSync("git rev-parse --short HEAD", { cwd: dir }).toString().trim();
+  } catch {
+    /* not a git checkout */
+  }
+  const date = new Date().toISOString().slice(0, 10);
+  return `v${version} · ${sha} · ${date}`;
+}
 
 // Standalone Vite app. Aliases the shared engine to its TS source, and is an installable,
 // offline-capable PWA (so an iPhone can "Add to Home Screen" and host server-less games).
@@ -33,6 +49,7 @@ export default defineConfig({
       },
     }),
   ],
+  define: { __BUILD_INFO__: JSON.stringify(buildInfo()) },
   resolve: {
     alias: { "@dsc/shared": path.resolve(dir, "../shared/src/index.ts") },
   },
