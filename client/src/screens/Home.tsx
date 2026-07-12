@@ -127,6 +127,7 @@ export function Home() {
         </button>
       </div>
       <p className="hint">Everyone must be on the same Wi-Fi. 2–5 divers.</p>
+      <p className="version">{__BUILD_INFO__}</p>
       {showBoard && <Leaderboard onClose={() => setShowBoard(false)} />}
       {showHelp && <HowToPlay onClose={() => setShowHelp(false)} />}
       {showHistory && <History onClose={() => setShowHistory(false)} />}

@@ -93,6 +93,15 @@ details { display:flex; flex-direction:column; gap:8px; }
   border-bottom:1px solid rgba(169,205,217,.15); border-radius:0 0 12px 12px;
 }
 .hb-actions { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.hh-actions { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.btn.chip.gold { background:rgba(242,193,78,.18); border-color:var(--gold); color:var(--gold); }
+.hintbar { background:rgba(242,193,78,.14); border:1px solid rgba(242,193,78,.45); border-radius:12px; padding:10px 12px; font-size:.85rem; line-height:1.45; cursor:pointer; }
+.version { text-align:center; font-size:.7rem; color:rgba(169,205,217,.55); margin:4px 0 8px; }
+.modlist { display:flex; flex-direction:column; gap:4px; margin:2px 0 6px; }
+.modchip { font-size:.72rem; font-weight:700; line-height:1.35; text-align:center; padding:6px 10px; border-radius:10px; background:rgba(242,193,78,.1); border:1px dashed rgba(242,193,78,.45); color:var(--foam); }
+.ocard.help { text-align:left; max-height:80vh; overflow-y:auto; }
+.ocard.help h3 { margin:12px 0 4px; }
+.hint.left { text-align:left; }
 .btn.chip.danger { background:rgba(231,88,91,.18); border-color:var(--danger); }
 .btn.chip.confirm-end { background:var(--danger); color:#fff; font-weight:800; }
 .hb-crew { font-size:.78rem; color:var(--dim); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

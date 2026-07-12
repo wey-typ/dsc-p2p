@@ -1207,3 +1207,21 @@ misclick from killing a mission, and the game page had no invite/QR.
 - Live mobile-viewport run of the PWA dev build: host bar stays visible scrolled to the
   hand; End arms, auto-disarms, and a second tap returns to the lobby; level picker
   reaches Level 12. p2p typecheck + 9/9 tests + PWA build clean.
+
+## Cycle 36 — Version stamp + P2P Hint/Help parity
+
+### Develop
+- Both apps bake a build id at compile time (`__BUILD_INFO__` via Vite define):
+  "v0.2.0 · <git sha> · <date>", shown as a footer on the LAN home screen and on the
+  P2P home + in-game board — so an installed PWA's version is identifiable at a glance.
+  Root + p2p package versions bumped to 0.2.0.
+- P2P board gains 💡 Hint (shared `suggestPlay` advisor with a tap-to-dismiss banner,
+  cleared when the table advances) and a ? Help rules overlay (tricks, tasks,
+  objectives, deep complications, sonar), plus the standing complication chips above
+  the task row. Settings stays LAN-only (the P2P app has no sound/animations to toggle).
+
+### Check
+- Live PWA dev run at mobile viewport: version footer on home + board; hand header
+  shows 💡 Hint / ? Help / 📡 Sonar; hint banner renders advisor advice; help overlay
+  opens/closes. p2p typecheck + 9/9 tests + build clean (version string verified in the
+  bundle); LAN client typecheck + build clean.
