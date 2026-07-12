@@ -1162,3 +1162,33 @@ numbers: MAX_LEVEL 8 → 11, three new zones.
 - Simulated Render env locally (RENDER + RENDER_EXTERNAL_URL + PORT): `/api/lan` →
   `{"baseUrl":"https://deep-sea-crew.onrender.com"}`, `/health` ok; plain local run
   still returns the Wi-Fi address. 139/139 tests.
+
+## Cycle 34 — UX fixes: visible complications, sticky controls, end-confirm, in-game invite, host-role bug
+
+### Plan
+Player feedback from live level-12 games: the commander-ban loss felt unexplained (rule
+wasn't listed with the tasks), the control bar scrolled away on phones, End was one
+misclick from killing a mission, and the game page had no invite/QR.
+
+### Develop
+- Tasks panel now lists the mission's standing complications as dashed chips
+  (`describeModifier`) — the "must not win the first 3 tricks" rule is spelled out
+  before/while it bites, alongside the existing live trick banner.
+- `.game-bar` is position:sticky (blurred backdrop) so 💡 Hint / ? Help / ⏸ Pause /
+  ■ End stay reachable while scrolled to your hand on phones; settings gear z-raised.
+- ■ End is now two-step: first tap arms "⚠ Confirm end?" (auto-disarms after 3.5s),
+  second tap actually ends — no more misclick wipes.
+- Game page has a "▣ CODE" chip that opens the ShareRoom QR/link overlay (uses
+  /api/lan, so it shows the public URL when cloud-hosted) — invite/reconnect no longer
+  requires going back to the lobby.
+- BUG: on host disconnect (e.g. page reload) the host role transferred to the first
+  connected player — which could be a BOT, permanently killing pause/end/start
+  controls. Host transfer now prefers connected humans, never bots, and a rejoining
+  human reclaims hostship if the current host is a bot or disconnected.
+
+### Check
+- New rooms test: host reload with bot crew keeps/regains hostship + controls.
+  Root `npm test` → **140/140**; typechecks + client build clean.
+- Live mobile-viewport (375×812) verification: complication chips render at level 12,
+  control bar stays in view when scrolled to the hand, gear visible, End arms then
+  auto-disarms without ending, ▣ chip opens the QR with the correct join URL.

@@ -2,11 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { useGame } from "../state";
 import { CardView } from "../components/CardView";
 import { HowToPlay } from "./HowToPlay";
+import { ShareRoom } from "./ShareRoom";
 import { playSfx } from "../sound";
 import {
   sonarPosition,
   suggestPlay,
   describeObjective,
+  describeModifier,
   type Card,
   type TaskState,
   type Communication,
@@ -45,6 +47,26 @@ export function Game() {
   const [showHelp, setShowHelp] = useState(false);
   const [hint, setHint] = useState<Suggestion | null>(null);
   const [distressAsk, setDistressAsk] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const [baseUrl, setBaseUrl] = useState(() => window.location.origin);
+
+  // Base URL for the invite QR/link (LAN address locally, public URL in the cloud).
+  useEffect(() => {
+    fetch("/api/lan")
+      .then((r) => r.json())
+      .then((d: { baseUrl?: string }) => {
+        if (d.baseUrl) setBaseUrl(d.baseUrl);
+      })
+      .catch(() => {});
+  }, []);
+
+  // "■ End" needs a second tap to confirm; the armed state disarms after a moment.
+  useEffect(() => {
+    if (!confirmEnd) return;
+    const t = setTimeout(() => setConfirmEnd(false), 3500);
+    return () => clearTimeout(t);
+  }, [confirmEnd]);
 
   const sfxPrev = useRef({ plays: 0, trickNo: 0, completed: 0, comms: 0, phase: "", yourTurn: false, init: false });
 
@@ -115,12 +137,19 @@ export function Game() {
 
   return (
     <div className="screen game">
-      {/* Top control bar */}
+      {/* Top control bar (sticky so Hint/Help/Pause/End stay reachable while scrolled) */}
       <div className="game-bar">
         <span className="game-mission">
           {room.campaignName} · Mission {room.level + 1}
         </span>
         <span className="game-controls">
+          <button
+            className="btn chip"
+            onClick={() => setShowShare(true)}
+            aria-label="Show room code and QR"
+          >
+            ▣ {room.code}
+          </button>
           {yourTurn && (
             <button className="btn chip gold" onClick={() => setHint(suggestPlay(view))}>
               💡 Hint
@@ -136,7 +165,21 @@ export function Game() {
               ) : (
                 <button className="btn chip" onClick={pause}>⏸ Pause</button>
               )}
-              <button className="btn chip danger" onClick={endGame}>■ End</button>
+              {confirmEnd ? (
+                <button
+                  className="btn chip danger confirm-end"
+                  onClick={() => {
+                    setConfirmEnd(false);
+                    endGame();
+                  }}
+                >
+                  ⚠ Confirm end?
+                </button>
+              ) : (
+                <button className="btn chip danger" onClick={() => setConfirmEnd(true)}>
+                  ■ End
+                </button>
+              )}
             </>
           )}
         </span>
@@ -179,6 +222,15 @@ export function Game() {
             </span>
           )}
         </div>
+        {view.modifiers.length > 0 && (
+          <div className="modifier-list">
+            {view.modifiers.map((m, i) => (
+              <div key={i} className="modifier-chip">
+                {describeModifier(m)}
+              </div>
+            ))}
+          </div>
+        )}
         <div className="task-row">
           {view.tasks.map((t) => (
             <div key={t.id} className={`task task-${t.status}`}>
@@ -400,6 +452,13 @@ export function Game() {
       )}
 
       {showHelp && <HowToPlay onClose={() => setShowHelp(false)} />}
+      {showShare && (
+        <ShareRoom
+          code={room.code}
+          joinUrl={`${baseUrl}/?join=${room.code}`}
+          onClose={() => setShowShare(false)}
+        />
+      )}
     </div>
   );
 }
