@@ -10,6 +10,7 @@ import {
   type TaskState,
 } from "@dsc/shared";
 import type { P2PRoom } from "./protocol";
+import { BottomBar, BBItem } from "./BottomBar";
 
 const SUIT: Record<Card["suit"], { cls: string; glyph: string }> = {
   blue: { cls: "s-blue", glyph: "≈" },
@@ -45,7 +46,7 @@ function constraintLabel(t: TaskState): string | null {
 const sameCard = (a: Card, b: Card) => a.suit === b.suit && a.value === b.value;
 
 export function Board({
-  view, room, isHost, showTricks = true, onPlay, onCommunicate, onRestart, onStart,
+  view, room, isHost, showTricks = true, onPlay, onCommunicate, onRestart, onStart, onSettings, onInvite, onEnd,
 }: {
   view: PlayerView | null;
   room: P2PRoom;
@@ -55,15 +56,26 @@ export function Board({
   onCommunicate: (c: Card) => void;
   onRestart: () => void;
   onStart: (lv: number) => void;
+  onSettings: () => void;
+  onInvite?: () => void;
+  onEnd?: () => void;
 }) {
   const [sonar, setSonar] = useState(false);
   const [hint, setHint] = useState<Suggestion | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
 
   // Clear a shown hint whenever the table state advances.
   useEffect(() => {
     setHint(null);
   }, [view?.turn, view?.trick.plays.length, view?.phase]);
+
+  // "End" needs a second tap to confirm; the armed state disarms after a moment.
+  useEffect(() => {
+    if (!confirmEnd) return;
+    const t = setTimeout(() => setConfirmEnd(false), 3500);
+    return () => clearTimeout(t);
+  }, [confirmEnd]);
 
   if (!view) return <div className="screen"><p className="hint">Loading…</p></div>;
 
@@ -148,14 +160,7 @@ export function Board({
       </div>
 
       <div className="hand-head">
-        <span className="label">Your hand</span>
-        <span className="hh-actions">
-          {yourTurn && (
-            <button className="btn chip gold" onClick={() => setHint(suggestPlay(view))}>💡 Hint</button>
-          )}
-          <button className="btn chip" onClick={() => setShowHelp(true)}>? Help</button>
-          {canSonar && <button className="btn chip" onClick={() => setSonar((s) => !s)}>{sonar ? "Cancel" : "📡 Sonar"}</button>}
-        </span>
+        <span className="label">{sonar ? "Sonar — tap your highest / only / lowest card" : "Your hand"}</span>
       </div>
       <div className="hand">
         {view.hand.map((card) => {
@@ -177,6 +182,34 @@ export function Board({
       </div>
 
       <p className="version">{__BUILD_INFO__}</p>
+
+      <BottomBar>
+        <BBItem icon="💡" label="Hint" disabled={!yourTurn} onClick={() => setHint(suggestPlay(view))} />
+        <BBItem
+          icon="📡"
+          label={sonar ? "Cancel" : "Sonar"}
+          active={sonar}
+          disabled={!canSonar && !sonar}
+          onClick={() => setSonar((s) => !s)}
+        />
+        <BBItem icon="❓" label="Help" onClick={() => setShowHelp(true)} />
+        {isHost && onInvite && <BBItem icon="➕" label="Invite" onClick={onInvite} />}
+        {isHost && onEnd &&
+          (confirmEnd ? (
+            <BBItem
+              icon="⚠️"
+              label="Confirm?"
+              danger
+              onClick={() => {
+                setConfirmEnd(false);
+                onEnd();
+              }}
+            />
+          ) : (
+            <BBItem icon="⏹" label="End" danger onClick={() => setConfirmEnd(true)} />
+          ))}
+        <BBItem icon="⚙️" label="Settings" onClick={onSettings} />
+      </BottomBar>
 
       {showHelp && (
         <div className="overlay" onClick={() => setShowHelp(false)}>

@@ -5,6 +5,7 @@ import { createHostPeer, createGuestPeer } from "./rtc";
 import { encodeSignal, decodeSignal } from "./signaling";
 import type { P2PRoom } from "./protocol";
 import { Board } from "./Board";
+import { BottomBar, BBItem } from "./BottomBar";
 import { checkForAppUpdate } from "./update";
 import { QrCode } from "./QrCode";
 import { QrScanner } from "./QrScanner";
@@ -118,40 +119,63 @@ export function App() {
   }
 
   // ---- render ----
+  const openSettings = () => setShowSettings(true);
   let screen: React.ReactNode = null;
   if (!role) {
-    screen = <Home name={name} setName={setName} onHost={() => name.trim() && makeHost()} onJoin={() => name.trim() && setRole("guest")} canResume={!!hasSaved.current?.game} onResume={() => makeHost(hasSaved.current!)} onShare={() => setShareApp(true)} />;
-  } else if (role === "host") {
-    const playing = !!room && room.phase !== "lobby" && !!view;
     screen = (
       <>
-        <HostBar room={room} onInvite={openInvite} playing={playing} onEnd={() => hostRef.current?.restart()} />
-        {playing ? (
-          <Board view={view} room={room!} isHost showTricks={showTricks} onPlay={play} onCommunicate={communicate} onRestart={() => hostRef.current?.restart()} onStart={(lv) => hostRef.current?.start(lv)} />
-        ) : (
-          <HostLobby room={room} onSetLevel={(lv) => hostRef.current?.setLevel(lv)} onStart={(lv) => hostRef.current?.start(lv)} onAddBot={() => hostRef.current?.addBot()} onRemoveBot={() => hostRef.current?.removeBot()} onLeave={leaveToHome} />
-        )}
+        <Home name={name} setName={setName} onHost={() => name.trim() && makeHost()} onJoin={() => name.trim() && setRole("guest")} canResume={!!hasSaved.current?.game} onResume={() => makeHost(hasSaved.current!)} />
+        <BottomBar>
+          <BBItem icon="📤" label="Share" onClick={() => setShareApp(true)} />
+          <BBItem icon="🔄" label="Update" onClick={() => window.dispatchEvent(new Event("dsc-check-update"))} />
+          <BBItem icon="⚙️" label="Settings" onClick={openSettings} />
+        </BottomBar>
+      </>
+    );
+  } else if (role === "host") {
+    const playing = !!room && room.phase !== "lobby" && !!view;
+    screen = playing ? (
+      <Board view={view} room={room!} isHost showTricks={showTricks} onPlay={play} onCommunicate={communicate} onRestart={() => hostRef.current?.restart()} onStart={(lv) => hostRef.current?.start(lv)} onSettings={openSettings} onInvite={openInvite} onEnd={() => hostRef.current?.restart()} />
+    ) : (
+      <>
+        <HostLobby room={room} onSetLevel={(lv) => hostRef.current?.setLevel(lv)} onStart={(lv) => hostRef.current?.start(lv)} onAddBot={() => hostRef.current?.addBot()} onRemoveBot={() => hostRef.current?.removeBot()} />
+        <BottomBar>
+          <BBItem icon="🏠" label="Home" onClick={leaveToHome} />
+          <BBItem icon="➕" label="Invite" onClick={openInvite} />
+          <BBItem icon="⚙️" label="Settings" onClick={openSettings} />
+        </BottomBar>
       </>
     );
   } else {
     // guest
+    let inner: React.ReactNode = null;
+    let inGame = false;
     if (lost) {
-      screen = <GuestConnect title="Reconnect" subtitle="Ask the host to tap Invite again, then scan it." pasteOffer={pasteOffer} setPasteOffer={setPasteOffer} onUse={() => guestUseOffer()} answerCode={answerCode} onScan={() => setScan("offer")} />;
+      inner = <GuestConnect title="Reconnect" subtitle="Ask the host to tap Invite again, then scan it." pasteOffer={pasteOffer} setPasteOffer={setPasteOffer} onUse={() => guestUseOffer()} answerCode={answerCode} onScan={() => setScan("offer")} />;
     } else if (!room) {
-      screen = <GuestConnect title="Join a game" pasteOffer={pasteOffer} setPasteOffer={setPasteOffer} onUse={() => guestUseOffer()} answerCode={answerCode} onScan={() => setScan("offer")} />;
+      inner = <GuestConnect title="Join a game" pasteOffer={pasteOffer} setPasteOffer={setPasteOffer} onUse={() => guestUseOffer()} answerCode={answerCode} onScan={() => setScan("offer")} />;
     } else if (room.phase === "lobby") {
-      screen = <div className="screen"><div className="panel"><h2>Connected!</h2><ul className="crew">{room.players.map((p) => <li key={p.seat}>🤿 {p.name}</li>)}</ul><p className="hint">Waiting for the host to begin…</p></div></div>;
+      inner = <div className="screen"><div className="panel"><h2>Connected!</h2><ul className="crew">{room.players.map((p) => <li key={p.seat}>🤿 {p.name}</li>)}</ul><p className="hint">Waiting for the host to begin…</p></div></div>;
     } else if (view) {
-      screen = <Board view={view} room={room} isHost={false} showTricks={showTricks} onPlay={play} onCommunicate={communicate} onRestart={() => {}} onStart={() => {}} />;
+      inGame = true;
+      inner = <Board view={view} room={room} isHost={false} showTricks={showTricks} onPlay={play} onCommunicate={communicate} onRestart={() => {}} onStart={() => {}} onSettings={openSettings} />;
     }
+    screen = inGame ? (
+      inner
+    ) : (
+      <>
+        {inner}
+        <BottomBar>
+          <BBItem icon="🏠" label="Home" onClick={leaveToHome} />
+          <BBItem icon="⚙️" label="Settings" onClick={openSettings} />
+        </BottomBar>
+      </>
+    );
   }
 
   return (
     <div className="app">
       <div className="ocean-bg" aria-hidden />
-      <button className="settings-gear" onClick={() => setShowSettings(true)} aria-label="Settings">
-        ⚙
-      </button>
       {screen}
       {showSettings && (
         <Settings showTricks={showTricks} setShowTricks={setShowTricks} onClose={() => setShowSettings(false)} />
@@ -208,8 +232,14 @@ function Settings({
   );
 }
 
-function Home({ name, setName, onHost, onJoin, canResume, onResume, onShare }: { name: string; setName: (v: string) => void; onHost: () => void; onJoin: () => void; canResume: boolean; onResume: () => void; onShare: () => void }) {
+function Home({ name, setName, onHost, onJoin, canResume, onResume }: { name: string; setName: (v: string) => void; onHost: () => void; onJoin: () => void; canResume: boolean; onResume: () => void }) {
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
+  // The bottom bar's 🔄 Update item triggers the check via this app-wide event.
+  useEffect(() => {
+    const h = () => void checkForAppUpdate(setUpdateStatus);
+    window.addEventListener("dsc-check-update", h);
+    return () => window.removeEventListener("dsc-check-update", h);
+  }, []);
   return (
     <div className="screen home">
       <header className="brand"><div className="brand-mark">🤿</div><h1>Deep Sea Crew</h1><p className="tagline">Peer-to-peer · 2–5 players · no server</p></header>
@@ -219,14 +249,8 @@ function Home({ name, setName, onHost, onJoin, canResume, onResume, onShare }: {
         <button className="btn ghost" disabled={!name.trim()} onClick={onJoin}>Join a game</button>
         {canResume && <button className="btn ghost" onClick={onResume}>↩︎ Resume your hosted game</button>}
       </div>
-      <button className="btn link" onClick={onShare}>📤 Share this game (QR)</button>
       <p className="hint">Connect directly — no Wi-Fi router or server. Add players (and reconnect dropped ones) by sharing a code or QR.</p>
-      <p className="version">
-        {__BUILD_INFO__}
-        <button className="btn link update-btn" onClick={() => void checkForAppUpdate(setUpdateStatus)}>
-          🔄 Check for update
-        </button>
-      </p>
+      <p className="version">{__BUILD_INFO__}</p>
       {updateStatus && <p className="update-status">{updateStatus}</p>}
     </div>
   );
@@ -254,60 +278,13 @@ function ShareApp({ onClose }: { onClose: () => void }) {
   );
 }
 
-function HostBar({
-  room,
-  onInvite,
-  playing = false,
-  onEnd,
-}: {
-  room: P2PRoom | null;
-  onInvite: () => void;
-  playing?: boolean;
-  onEnd?: () => void;
-}) {
-  // "■ End" needs a second tap to confirm; the armed state disarms after a moment.
-  const [confirmEnd, setConfirmEnd] = useState(false);
-  useEffect(() => {
-    if (!confirmEnd) return;
-    const t = setTimeout(() => setConfirmEnd(false), 3500);
-    return () => clearTimeout(t);
-  }, [confirmEnd]);
-
-  return (
-    <div className="hostbar">
-      <span className="hb-crew">Crew: {room?.players.map((p) => p.name).join(", ") || "—"}</span>
-      <span className="hb-actions">
-        <button className="btn chip" onClick={onInvite}>➕ Invite / Reconnect</button>
-        {playing && onEnd && (
-          confirmEnd ? (
-            <button
-              className="btn chip danger confirm-end"
-              onClick={() => {
-                setConfirmEnd(false);
-                onEnd();
-              }}
-            >
-              ⚠ Confirm end?
-            </button>
-          ) : (
-            <button className="btn chip danger" onClick={() => setConfirmEnd(true)}>■ End</button>
-          )
-        )}
-      </span>
-    </div>
-  );
-}
-
-function HostLobby({ room, onSetLevel, onStart, onAddBot, onRemoveBot, onLeave }: { room: P2PRoom | null; onSetLevel: (lv: number) => void; onStart: (lv: number) => void; onAddBot: () => void; onRemoveBot: () => void; onLeave: () => void }) {
+function HostLobby({ room, onSetLevel, onStart, onAddBot, onRemoveBot }: { room: P2PRoom | null; onSetLevel: (lv: number) => void; onStart: (lv: number) => void; onAddBot: () => void; onRemoveBot: () => void }) {
   const level = room?.level ?? 0;
   const count = room?.players.length ?? 1;
   const ready = count >= 2;
   const hasBot = !!room?.players.some((p) => p.name.endsWith("(bot)"));
   return (
     <div className="screen">
-      <div className="lobby-top">
-        <button className="btn link" onClick={onLeave}>← Home</button>
-      </div>
       <div className="panel">
         <h2>Crew ({count}/5)</h2>
         <ul className="crew">{room?.players.map((p) => <li key={p.seat}>{p.name.endsWith("(bot)") ? "🤖" : "🤿"} {p.name}{p.seat === 0 ? " · host" : ""}</li>)}</ul>

@@ -1256,3 +1256,24 @@ misclick from killing a mission, and the game page had no invite/QR.
 - Live mobile-viewport run: dropdown lists Mission 1–12 (·The Void last) and selecting
   works; ← Home returns to the home screen (also after End→lobby); gear visible in-game;
   toggle hides/shows 🏆 live and persists; typecheck + 9/9 tests + build clean.
+
+## Cycle 39 — PWA v0.3.0: social-app bottom navigation
+
+### Develop (webrtc-p2p)
+- New fixed bottom nav bar (`BottomBar`/`BBItem`: icon + label items, safe-area padded,
+  blurred backdrop) replaces ALL floating/top controls — the top of every screen is now
+  clean content only.
+  - Home: 📤 Share · 🔄 Update · ⚙️ Settings (update check wired via an app event; the
+    old inline share/update buttons removed).
+  - Host lobby: 🏠 Home · ➕ Invite · ⚙️ Settings (top hostbar + ← Home link removed).
+  - Guest connect/waiting: 🏠 Home · ⚙️ Settings.
+  - In-game (host): 💡 Hint · 📡 Sonar · ❓ Help · ➕ Invite · ⏹ End (two-step ⚠ Confirm)
+    · ⚙️ Settings; guests get Hint/Sonar/Help/Settings. Hint dims when it isn't your
+    turn; Sonar dims when unavailable and highlights while aiming.
+- Removed: fixed settings gear, sticky hostbar, hand-header chips. Screens get bottom
+  padding to clear the bar.
+
+### Check
+- Live mobile-viewport run: home + in-game screenshots show the clean top and the
+  6-item game bar; Hint shows advice, End arms ⚠ Confirm, Settings opens from the bar,
+  sonar dims correctly mid-trick. Typecheck + 9/9 tests + PWA build clean.
