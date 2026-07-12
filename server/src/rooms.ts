@@ -165,10 +165,11 @@ export class RoomManager {
       room.emptySince = now;
       return;
     }
-    // If the host dropped, hand the host role to the first still-connected player so
-    // game controls (pause/end/start) never get stuck.
+    // If the host dropped, hand the host role to the first still-connected HUMAN so
+    // game controls (pause/end/start) never get stuck. Bots can't drive the controls,
+    // so if only bots remain the role stays with the dropped host until they rejoin.
     if (room.hostId === playerId) {
-      const next = room.players.find((x) => x.connected);
+      const next = room.players.find((x) => x.connected && !x.isBot);
       if (next) room.hostId = next.id;
     }
   }
@@ -185,7 +186,10 @@ export class RoomManager {
       return;
     }
     if (wasHost) {
-      const next = room.players.find((p) => p.connected) ?? room.players[0]!;
+      const next =
+        room.players.find((p) => p.connected && !p.isBot) ??
+        room.players.find((p) => !p.isBot) ??
+        room.players[0]!;
       room.hostId = next.id;
     }
   }
@@ -213,6 +217,12 @@ export class RoomManager {
     if (!player) return { error: "Your seat is no longer in this game." };
     player.connected = true;
     room.emptySince = undefined;
+    // If the host seat is currently unusable (a bot, or a still-disconnected player),
+    // the returning human takes over so the game controls work again.
+    const host = room.players.find((p) => p.id === room.hostId);
+    if (!player.isBot && (!host || host.isBot || !host.connected)) {
+      room.hostId = player.id;
+    }
     return { room, player };
   }
 

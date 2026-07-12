@@ -292,3 +292,21 @@ describe("extension toggle", () => {
     expect(rm.setExtension(room.code, true)).toHaveProperty("error");
   });
 });
+
+describe("host role never lands on a bot", () => {
+  it("host reload keeps/regains hostship when the other players are bots", () => {
+    const rm = new RoomManager(41);
+    const { room, player: host } = rm.createRoom("Host");
+    rm.addBot(room.code);
+    rm.addBot(room.code);
+    rm.startGame(room.code);
+    // Host's socket drops (page reload): the role must NOT transfer to a bot.
+    rm.disconnect(room.code, host.id, 1000);
+    expect(room.players.find((p) => p.id === room.hostId)?.isBot).toBe(false);
+    // Rejoin restores a working host.
+    const back = rm.rejoin(room.code, host.id);
+    expect("player" in back).toBe(true);
+    expect(room.hostId).toBe(host.id);
+    expect(rm.pause(room.code)).toEqual({ ok: true }); // controls usable again
+  });
+});
