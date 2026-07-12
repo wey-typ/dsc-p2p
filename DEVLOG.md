@@ -1240,3 +1240,19 @@ misclick from killing a mission, and the game page had no invite/QR.
   path shows "You're on the latest version ✓"; then rebuilt dist under the running
   preview, clicked the button — update detected, installed, auto-reloaded, footer
   showed the new v0.2.1. p2p typecheck + 9/9 tests + build clean.
+
+## Cycle 38 — PWA: settings gear, won-tricks toggle, mission dropdown, lobby Home button
+
+### Develop (all webrtc-p2p; v0.2.2)
+- ⚙ settings gear fixed top-right on every screen (incl. in-game), opening a Settings
+  overlay; hostbar right-padded so the gear never covers its buttons.
+- "Show won tricks" toggle (default on, persisted in localStorage): player chips show
+  "N cards · 🏆wins" — restoring the trick counters (they were LAN-only before) and
+  making them optional for players who find them noisy.
+- Lobby level −/+ replaced with a "Mission" dropdown listing all 12 missions by name.
+- "← Home" button in the host lobby tears down the session state cleanly.
+
+### Check
+- Live mobile-viewport run: dropdown lists Mission 1–12 (·The Void last) and selecting
+  works; ← Home returns to the home screen (also after End→lobby); gear visible in-game;
+  toggle hides/shows 🏆 live and persists; typecheck + 9/9 tests + build clean.

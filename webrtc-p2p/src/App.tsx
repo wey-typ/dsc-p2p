@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MAX_LEVEL, type Card, type PlayerView } from "@dsc/shared";
+import { MAX_LEVEL, missionName, type Card, type PlayerView } from "@dsc/shared";
 import { HostController, GuestController, type SavedHostState } from "./session";
 import { createHostPeer, createGuestPeer } from "./rtc";
 import { encodeSignal, decodeSignal } from "./signaling";
@@ -20,12 +20,29 @@ function getGuestId(): string {
 function saveHost(s: SavedHostState): void { try { localStorage.setItem(HOST_KEY, JSON.stringify(s)); } catch { /* */ } }
 function loadHost(): SavedHostState | null { try { const r = localStorage.getItem(HOST_KEY); return r ? (JSON.parse(r) as SavedHostState) : null; } catch { return null; } }
 
+const SHOW_TRICKS_KEY = "dsc.p2p.showTricks";
+
 export function App() {
   const [role, setRole] = useState<"host" | "guest" | null>(null);
   const [name, setName] = useState("");
   const [room, setRoom] = useState<P2PRoom | null>(null);
   const [view, setView] = useState<PlayerView | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showTricks, setShowTricks] = useState(() => {
+    try {
+      return localStorage.getItem(SHOW_TRICKS_KEY) !== "off";
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(SHOW_TRICKS_KEY, showTricks ? "on" : "off");
+    } catch {
+      /* ignore */
+    }
+  }, [showTricks]);
 
   const [inviting, setInviting] = useState(false);
   const [offerCode, setOfferCode] = useState("");
@@ -87,6 +104,19 @@ export function App() {
   const play = (c: Card) => (role === "host" ? hostRef.current?.play(c) : guestRef.current?.play(c));
   const communicate = (c: Card) => (role === "host" ? hostRef.current?.communicateHost(c) : guestRef.current?.communicate(c));
 
+  /** Back to the home screen (host abandons the lobby; guests see the channel close). */
+  function leaveToHome() {
+    hostRef.current = null;
+    guestRef.current = null;
+    hostPeerRef.current = null;
+    hasSaved.current = loadHost();
+    setRole(null);
+    setRoom(null);
+    setView(null);
+    setInviting(false);
+    setLost(false);
+  }
+
   // ---- render ----
   let screen: React.ReactNode = null;
   if (!role) {
@@ -97,9 +127,9 @@ export function App() {
       <>
         <HostBar room={room} onInvite={openInvite} playing={playing} onEnd={() => hostRef.current?.restart()} />
         {playing ? (
-          <Board view={view} room={room!} isHost onPlay={play} onCommunicate={communicate} onRestart={() => hostRef.current?.restart()} onStart={(lv) => hostRef.current?.start(lv)} />
+          <Board view={view} room={room!} isHost showTricks={showTricks} onPlay={play} onCommunicate={communicate} onRestart={() => hostRef.current?.restart()} onStart={(lv) => hostRef.current?.start(lv)} />
         ) : (
-          <HostLobby room={room} onSetLevel={(lv) => hostRef.current?.setLevel(lv)} onStart={(lv) => hostRef.current?.start(lv)} onAddBot={() => hostRef.current?.addBot()} onRemoveBot={() => hostRef.current?.removeBot()} />
+          <HostLobby room={room} onSetLevel={(lv) => hostRef.current?.setLevel(lv)} onStart={(lv) => hostRef.current?.start(lv)} onAddBot={() => hostRef.current?.addBot()} onRemoveBot={() => hostRef.current?.removeBot()} onLeave={leaveToHome} />
         )}
       </>
     );
@@ -112,14 +142,20 @@ export function App() {
     } else if (room.phase === "lobby") {
       screen = <div className="screen"><div className="panel"><h2>Connected!</h2><ul className="crew">{room.players.map((p) => <li key={p.seat}>🤿 {p.name}</li>)}</ul><p className="hint">Waiting for the host to begin…</p></div></div>;
     } else if (view) {
-      screen = <Board view={view} room={room} isHost={false} onPlay={play} onCommunicate={communicate} onRestart={() => {}} onStart={() => {}} />;
+      screen = <Board view={view} room={room} isHost={false} showTricks={showTricks} onPlay={play} onCommunicate={communicate} onRestart={() => {}} onStart={() => {}} />;
     }
   }
 
   return (
     <div className="app">
       <div className="ocean-bg" aria-hidden />
+      <button className="settings-gear" onClick={() => setShowSettings(true)} aria-label="Settings">
+        ⚙
+      </button>
       {screen}
+      {showSettings && (
+        <Settings showTricks={showTricks} setShowTricks={setShowTricks} onClose={() => setShowSettings(false)} />
+      )}
       {inviting && (
         <InviteOverlay offerCode={offerCode} pasteAnswer={pasteAnswer} setPasteAnswer={setPasteAnswer} onAccept={() => hostAccept()} onScan={() => setScan("answer")} onClose={() => setInviting(false)} />
       )}
@@ -132,6 +168,42 @@ export function App() {
       )}
       {shareApp && <ShareApp onClose={() => setShareApp(false)} />}
       {error && <div className="toast" onClick={() => setError(null)}>{error}</div>}
+    </div>
+  );
+}
+
+/** Per-device settings (saved in localStorage). */
+function Settings({
+  showTricks,
+  setShowTricks,
+  onClose,
+}: {
+  showTricks: boolean;
+  setShowTricks: (v: boolean) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="ocard" onClick={(e) => e.stopPropagation()}>
+        <h2>⚙ Settings</h2>
+        <div className="setting-row">
+          <div className="setting-text">
+            <strong>Show won tricks</strong>
+            <p className="hint left">Display each diver's 🏆 trick count in the player strip (handy for 🎯 quota objectives).</p>
+          </div>
+          <button
+            className={`toggle ${showTricks ? "on" : ""}`}
+            onClick={() => setShowTricks(!showTricks)}
+            role="switch"
+            aria-checked={showTricks}
+            aria-label="Toggle won-tricks display"
+          >
+            <span className="knob" />
+          </button>
+        </div>
+        <p className="hint">Saved on this device only.</p>
+        <button className="btn primary" onClick={onClose}>Done</button>
+      </div>
     </div>
   );
 }
@@ -226,13 +298,16 @@ function HostBar({
   );
 }
 
-function HostLobby({ room, onSetLevel, onStart, onAddBot, onRemoveBot }: { room: P2PRoom | null; onSetLevel: (lv: number) => void; onStart: (lv: number) => void; onAddBot: () => void; onRemoveBot: () => void }) {
+function HostLobby({ room, onSetLevel, onStart, onAddBot, onRemoveBot, onLeave }: { room: P2PRoom | null; onSetLevel: (lv: number) => void; onStart: (lv: number) => void; onAddBot: () => void; onRemoveBot: () => void; onLeave: () => void }) {
   const level = room?.level ?? 0;
   const count = room?.players.length ?? 1;
   const ready = count >= 2;
   const hasBot = !!room?.players.some((p) => p.name.endsWith("(bot)"));
   return (
     <div className="screen">
+      <div className="lobby-top">
+        <button className="btn link" onClick={onLeave}>← Home</button>
+      </div>
       <div className="panel">
         <h2>Crew ({count}/5)</h2>
         <ul className="crew">{room?.players.map((p) => <li key={p.seat}>{p.name.endsWith("(bot)") ? "🤖" : "🤿"} {p.name}{p.seat === 0 ? " · host" : ""}</li>)}</ul>
@@ -240,11 +315,20 @@ function HostLobby({ room, onSetLevel, onStart, onAddBot, onRemoveBot }: { room:
           <button className="btn chip" disabled={count >= 5} onClick={onAddBot}>+ Bot</button>
           <button className="btn chip" disabled={!hasBot} onClick={onRemoveBot}>− Bot</button>
         </div>
-        <div className="level-row">
-          <button className="btn chip" disabled={level <= 0} onClick={() => onSetLevel(level - 1)}>−</button>
-          <span className="level-label">Level {level + 1}</span>
-          <button className="btn chip" disabled={level >= MAX_LEVEL} onClick={() => onSetLevel(level + 1)}>+</button>
-        </div>
+        <label className="field">
+          <span>Mission</span>
+          <select
+            className="level-select"
+            value={level}
+            onChange={(e) => onSetLevel(Number(e.target.value))}
+          >
+            {Array.from({ length: MAX_LEVEL + 1 }, (_, lv) => (
+              <option key={lv} value={lv}>
+                Mission {lv + 1} · {missionName(lv)}
+              </option>
+            ))}
+          </select>
+        </label>
         <button className="btn primary" disabled={!ready} onClick={() => onStart(level)}>{ready ? "Begin the dive" : "Add a bot or invite a diver"}</button>
       </div>
     </div>
