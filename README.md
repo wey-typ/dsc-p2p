@@ -52,6 +52,16 @@ right-click the app → **Open** once.)
 
 Tap **How to play** on the home screen for the in-app rules + suit legend.
 
+## Play online (Render — free, no same-Wi-Fi needed)
+The repo ships a [`render.yaml`](./render.yaml) blueprint. In the Render dashboard:
+**New + → Blueprint → connect this repo → Apply.** Render builds the client, starts the
+server, and gives you a permanent free URL like `https://deep-sea-crew.onrender.com` —
+share it with anyone, anywhere; no domain needed. Free-plan trade-offs: the service
+sleeps after ~15 min idle (first visitor waits ~1 min while it wakes) and the filesystem
+is ephemeral, so campaign/leaderboard progress resets when it sleeps or redeploys.
+`/api/lan` automatically returns the public URL in the cloud (set `PUBLIC_BASE_URL` to
+override on other hosts), so invite links and QR codes work unchanged.
+
 ## Gameplay summary
 - 40 cards: 4 colours ×1–9 (Current/Kelp/Coral/Sand) + 4 Submarines (1–4, trump).
 - Each trick: follow the led colour if you can; highest Sub wins, else highest of the led
@@ -59,6 +69,8 @@ Tap **How to play** on the home screen for the in-app rules + suit legend.
 - **Tasks**: a task is done when its owner wins the trick containing that card. Wrong
   capture = instant mission fail. Ordering badges: ▸ relative order, ① absolute position,
   Ω must-be-last.
+- **Extension rules toggle**: the host can switch the ⭐ extension (objectives, distress,
+  comms complications) on/off in the lobby — off gives the classic capture-only game.
 - **Special objectives** (from Mission 2): alongside card tasks, missions demand feats —
   🥇 *win the first trick*, 🎯 *win exactly N tricks* (over = instant fail), 🚫 *win no
   cards of a colour*. All generated jointly-solvable with the deal.
@@ -67,6 +79,10 @@ Tap **How to play** on the home screen for the in-app rules + suit legend.
   add **comms complications**: sonar delayed until after trick 2 (L6–7) or dead (L8+).
 - **Distress signal** (🆘, host, once per mission, before the first card): every diver
   passes one card (never a submarine) left or right — a rescue for hopeless deals.
+- **Deep complications** (Missions 10–12): 🌀 *Undertow* — on marked tricks the LOWEST
+  card of the led colour wins and submarines sink; ⚓ *Commander's burden* — the
+  commander must not win any of the first 3 tricks. Mission 12 "The Void" has both.
+  The campaign now spans **12 named missions**.
 - **Controls** (host): Pause / Resume / End, plus Next-mission or Retry after each game.
 - **Progress** saves per crew name; missions get harder each level. **Leaderboard** ranks
   crews by missions cleared.

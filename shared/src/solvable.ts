@@ -1,9 +1,16 @@
 import { type Card, type ColorSuit, type Player, COLOR_SUITS } from "./types.js";
 import { deal } from "./cards.js";
 import { legalMoves, trickWinner } from "./trick.js";
-import { type Mission, type GameState, makeGameState } from "./game.js";
+import { type Mission, type GameState, type MissionModifier, makeGameState } from "./game.js";
 import { type MissionTask, type TaskObjective } from "./tasks.js";
-import { missionTaskCount, missionName, objectiveCountForLevel, commsForLevel } from "./missions.js";
+import {
+  missionTaskCount,
+  missionName,
+  objectiveCountForLevel,
+  commsForLevel,
+  modifiersForLevel,
+  type MissionOptions,
+} from "./missions.js";
 
 /** Seats still holding cards. */
 function countWithCards(hands: readonly Card[][]): number {
@@ -24,8 +31,23 @@ interface PlannedPlay {
   trickIndex: number;
 }
 
-/** Play out a full random-but-legal game (no tasks) to learn who wins each card, in order. */
-function simulateRawTricks(hands: Card[][], commander: number, rng: () => number): PlannedPlay[] {
+/** Whether trick `trickIndex` (0-based) is an undertow trick under `modifiers`. */
+function undertowAt(modifiers: readonly MissionModifier[], trickIndex: number): boolean {
+  const u = modifiers.find((m) => m.kind === "undertow");
+  return u?.kind === "undertow" && (trickIndex + 1) % u.everyN === 0;
+}
+
+/**
+ * Play out a full random-but-legal game (no tasks) to learn who wins each card, in order.
+ * Uses the SAME winner rules the live engine will apply (incl. undertow tricks), so
+ * everything derived from this playthrough stays consistent with actual play.
+ */
+function simulateRawTricks(
+  hands: Card[][],
+  commander: number,
+  rng: () => number,
+  modifiers: readonly MissionModifier[] = []
+): PlannedPlay[] {
   const work = hands.map((h) => h.slice());
   const plan: PlannedPlay[] = [];
   let leader = commander;
@@ -42,12 +64,31 @@ function simulateRawTricks(hands: Card[][], commander: number, rng: () => number
       plays.push({ seat: turn, card });
       turn = nextWithCards(work, turn);
     }
-    const winner = trickWinner({ leader, plays });
+    const winner = trickWinner({ leader, plays }, undertowAt(modifiers, trickIndex));
     for (const p of plays) plan.push({ card: p.card, winner, trickIndex });
     leader = (work[winner]?.length ?? 0) > 0 ? winner : nextWithCards(work, winner);
     trickIndex++;
   }
   return plan;
+}
+
+/** Does this playthrough respect a commander-ban modifier (if present)? */
+function respectsCommanderBan(
+  plan: PlannedPlay[],
+  commander: number,
+  modifiers: readonly MissionModifier[]
+): boolean {
+  const ban = modifiers.find((m) => m.kind === "commanderBan");
+  if (ban?.kind !== "commanderBan") return true;
+  const seen = new Set<number>();
+  for (const p of plan) {
+    if (p.trickIndex >= ban.tricks) break;
+    if (!seen.has(p.trickIndex)) {
+      seen.add(p.trickIndex);
+      if (p.winner === commander) return false;
+    }
+  }
+  return true;
 }
 
 /** A solvable game plus a known winning line of cards (the playthrough it was derived from). */
@@ -125,19 +166,47 @@ function deriveObjectives(
  * performed, ordering constraints follow the real completion order). This is how
  * cooperative puzzles are made winnable — random constrained missions usually aren't.
  */
-export function buildSolvableGame(players: Player[], level: number, rng: () => number): GameState {
-  return buildSolvableGameWithLine(players, level, rng).state;
+export function buildSolvableGame(
+  players: Player[],
+  level: number,
+  rng: () => number,
+  opts: MissionOptions = {}
+): GameState {
+  return buildSolvableGameWithLine(players, level, rng, opts).state;
 }
 
 /** As `buildSolvableGame`, but also returns the constructive winning line (for tests/proof). */
 export function buildSolvableGameWithLine(
   players: Player[],
   level: number,
-  rng: () => number
+  rng: () => number,
+  opts: MissionOptions = {}
 ): SolvableGame {
+  const extension = opts.extension !== false;
   const n = players.length;
-  const { hands, commander } = deal(n, rng);
-  const plan = simulateRawTricks(hands, commander, rng);
+  let modifiers = extension ? modifiersForLevel(level) : [];
+
+  // Deal + play until the playthrough respects the commander ban (rejection sampling —
+  // almost always immediate; re-deal occasionally; drop the ban as a last-ditch fallback
+  // so we never emit a mission its own construction line would fail).
+  let hands: Card[][];
+  let commander: number;
+  let plan: PlannedPlay[];
+  for (let attempt = 0; ; attempt++) {
+    ({ hands, commander } = deal(n, rng));
+    let ok = false;
+    for (let retry = 0; retry < 20 && !ok; retry++) {
+      plan = simulateRawTricks(hands, commander, rng, modifiers);
+      ok = respectsCommanderBan(plan, commander, modifiers);
+    }
+    if (ok) break;
+    if (attempt >= 25) {
+      modifiers = modifiers.filter((m) => m.kind !== "commanderBan");
+      plan = simulateRawTricks(hands, commander, rng, modifiers);
+      break;
+    }
+  }
+  plan = plan!;
 
   // Candidate tricks: those containing at least one colour card (valid task targets).
   const byTrick = new Map<number, { winner: number; colourCards: Card[] }>();
@@ -152,12 +221,9 @@ export function buildSolvableGameWithLine(
     .sort((a, b) => a.trickIndex - b.trickIndex);
 
   const total = Math.min(missionTaskCount(level), candidateTricks.length);
-  const objectives = deriveObjectives(
-    n,
-    plan,
-    Math.min(objectiveCountForLevel(level), Math.max(0, total - 1)),
-    rng
-  );
+  const objectives = extension
+    ? deriveObjectives(n, plan, Math.min(objectiveCountForLevel(level), Math.max(0, total - 1)), rng)
+    : [];
   const K = Math.max(1, total - objectives.length);
 
   // Spread the K chosen capture tricks across the timeline for a varied completion order.
@@ -197,7 +263,9 @@ export function buildSolvableGameWithLine(
     id: `mission-${level + 1}`,
     name: `Mission ${level + 1} · ${missionName(level)}`,
     tasks,
-    comms: commsForLevel(level),
+    comms: extension ? commsForLevel(level) : "open",
+    distressAllowed: extension,
+    modifiers,
   };
   return {
     state: makeGameState(players, hands, commander, mission),

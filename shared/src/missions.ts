@@ -1,5 +1,5 @@
 import { type Card, COLOR_SUITS, MAX_COLOR_VALUE } from "./types.js";
-import type { CommsMode, Mission } from "./game.js";
+import { describeModifier, type CommsMode, type Mission, type MissionModifier } from "./game.js";
 import type { MissionTask, TaskObjective } from "./tasks.js";
 import { shuffle } from "./rng.js";
 
@@ -43,6 +43,12 @@ export function missionTaskCount(level: number): number {
   return Math.min(2 + level, 8);
 }
 
+/** Options shared by the mission builders. */
+export interface MissionOptions {
+  /** Extension rules: special objectives, comms complications, distress (default true). */
+  extension?: boolean;
+}
+
 /**
  * How many of the mission's tasks are "extension" objectives (win-the-first-trick,
  * win-exactly-N, win-no-colour) rather than classic card captures.
@@ -61,6 +67,24 @@ export function commsForLevel(level: number): CommsMode {
   return "open";
 }
 
+/**
+ * Deep-mission complications by level (Missions 10+ bring genuinely new rules):
+ *  - 9  (Mission 10): undertow every 4th trick.
+ *  - 10 (Mission 11): commander must not win the first 3 tricks.
+ *  - 11+ (Mission 12): both, with undertow every 3rd trick.
+ */
+export function modifiersForLevel(level: number): MissionModifier[] {
+  if (level >= 11) {
+    return [
+      { kind: "undertow", everyN: 3 },
+      { kind: "commanderBan", tricks: 3 },
+    ];
+  }
+  if (level === 10) return [{ kind: "commanderBan", tricks: 3 }];
+  if (level === 9) return [{ kind: "undertow", everyN: 4 }];
+  return [];
+}
+
 /** A short flavour name for the mission at a given level. */
 export function missionName(level: number): string {
   const names = [
@@ -73,19 +97,23 @@ export function missionName(level: number): string {
     "Midnight Zone",
     "The Abyssal Plain",
     "Hadal Depths",
+    "The Fracture",
+    "Leviathan's Rest",
+    "The Void",
   ];
   return names[Math.min(level, names.length - 1)]!;
 }
 
 /** Human-readable rules introduced at this level (for UI). */
-export function missionNotes(level: number): string[] {
+export function missionNotes(level: number, extension = true): string[] {
   const notes: string[] = [];
-  if (level >= 1) notes.push("Special objectives join the dive (first trick / trick quotas / forbidden colours).");
+  if (extension && level >= 1) notes.push("Special objectives join the dive (first trick / trick quotas / forbidden colours).");
   if (level >= 2) notes.push("One card task must be completed LAST.");
   if (level >= 4) notes.push("Most card tasks must be completed in numbered order.");
-  if (level >= 5 && level < 7) notes.push("Sonar interference: signals only after the first two tricks.");
+  if (extension && level >= 5 && level < 7) notes.push("Sonar interference: signals only after the first two tricks.");
   if (level >= 6) notes.push("The ① task must be the very first completed.");
-  if (level >= 7) notes.push("Sonar is DEAD: no signals this mission.");
+  if (extension && level >= 7) notes.push("Sonar is DEAD: no signals this mission.");
+  if (extension) for (const m of modifiersForLevel(level)) notes.push(describeModifier(m) + ".");
   if (notes.length === 0) notes.push("Complete the tasks in any order.");
   return notes;
 }
@@ -117,10 +145,12 @@ function randomObjective(numPlayers: number, i: number, rng: () => number): Task
 export function buildMissionForLevel(
   numPlayers: number,
   level: number,
-  rng: () => number
+  rng: () => number,
+  opts: MissionOptions = {}
 ): Mission {
+  const extension = opts.extension !== false;
   const count = missionTaskCount(level);
-  const objectiveCount = Math.min(objectiveCountForLevel(level), count - 1);
+  const objectiveCount = extension ? Math.min(objectiveCountForLevel(level), count - 1) : 0;
   const captureCount = count - objectiveCount;
 
   const pool = shuffle(colorCards(), rng);
@@ -163,6 +193,8 @@ export function buildMissionForLevel(
     id: `mission-${level + 1}`,
     name: `Mission ${level + 1} · ${missionName(level)}`,
     tasks,
-    comms: commsForLevel(level),
+    comms: extension ? commsForLevel(level) : "open",
+    distressAllowed: extension,
+    modifiers: extension ? modifiersForLevel(level) : [],
   };
 }

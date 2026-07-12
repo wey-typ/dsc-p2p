@@ -20,6 +20,7 @@ import {
   type DistressPayload,
   type DistressPickPayload,
   type SetLevelPayload,
+  type SetExtensionPayload,
   type KickPayload,
   type JoinAck,
 } from "@dsc/shared";
@@ -52,6 +53,8 @@ export function createGameServer(
   const lab = botLab === undefined ? new BotLab() : botLab;
 
   const app = express();
+  // Behind a cloud proxy (e.g. Render) trust X-Forwarded-* so req.protocol is right.
+  app.set("trust proxy", true);
   const clientDist = path.resolve(__dirname, "../../client/dist");
   app.use(express.static(clientDist));
   app.get("/health", (_req, res) => res.json({ ok: true }));
@@ -67,9 +70,16 @@ export function createGameServer(
     if (!rec) return res.status(404).json({ error: "Not found" });
     res.json(rec);
   });
-  // Best LAN base URL for sharing (QR / link). Uses the server's real Wi-Fi address +
-  // the port the request came in on, so phones on the same network can reach it.
+  // Best base URL for sharing (QR / link).
+  // - Cloud (PUBLIC_BASE_URL set, or a known cloud env like Render): the public URL.
+  // - LAN: the server's real Wi-Fi address + the port the request came in on.
   app.get("/api/lan", (req, res) => {
+    const publicBase =
+      process.env.PUBLIC_BASE_URL ??
+      (process.env.RENDER_EXTERNAL_URL || (process.env.RENDER ? `https://${req.get("host")}` : null));
+    if (publicBase) {
+      return res.json({ baseUrl: publicBase.replace(/\/$/, ""), ip: null });
+    }
     const port = req.socket.localPort ?? 3000;
     const virtual = /^(utun|ipsec|ppp|tun|tap|awdl|llw|bridge|vboxnet|vmnet|docker|veth)/i;
     let ip: string | null = null;
@@ -258,6 +268,9 @@ export function createGameServer(
     socket.on(EV.RoomRemoveBot, () => hostAction(socket.id, (code) => rooms.removeBot(code)));
     socket.on(EV.RoomSetLevel, (payload: SetLevelPayload) =>
       hostAction(socket.id, (code) => rooms.setLevel(code, payload?.level ?? 0))
+    );
+    socket.on(EV.RoomSetExtension, (payload: SetExtensionPayload) =>
+      hostAction(socket.id, (code) => rooms.setExtension(code, payload?.extension === true))
     );
 
     socket.on(EV.GameRestart, () => hostAction(socket.id, (code) => rooms.restart(code)));

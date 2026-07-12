@@ -67,6 +67,12 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
           <strong> sonar delayed</strong> until after trick 2, or <strong>dead</strong> entirely.
         </p>
 
+        <h3>Deep complications 🌀 (Missions 10+)</h3>
+        <ul className="help-list">
+          <li><strong>🌀 Undertow</strong> — on marked tricks the <strong>lowest</strong> card of the led colour wins, and Subs sink (never win). Watch the trick banner!</li>
+          <li><strong>⚓ Commander's burden</strong> — the commander must not win any of the first 3 tricks.</li>
+        </ul>
+
         <h3>Distress signal 🆘</h3>
         <p className="help-lead">
           Bad deal? Before the first card is played, the host can fire the distress signal:

@@ -5,7 +5,7 @@ import { ShareRoom } from "./ShareRoom";
 import { missionName, missionNotes, MAX_LEVEL } from "@dsc/shared";
 
 export function Lobby() {
-  const { room, youId, startGame, addBot, removeBot, kick, setLevel, leave } = useGame();
+  const { room, youId, startGame, addBot, removeBot, kick, setLevel, setExtension, leave } = useGame();
   const [showGuide, setShowGuide] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -93,10 +93,29 @@ export function Lobby() {
           )}
         </div>
         <ul className="lp-notes">
-          {missionNotes(room.level).map((n, i) => (
+          {missionNotes(room.level, room.extension).map((n, i) => (
             <li key={i}>{n}</li>
           ))}
         </ul>
+        <div className="ext-toggle">
+          {isHost ? (
+            <label className="ext-label">
+              <input
+                type="checkbox"
+                checked={room.extension}
+                onChange={(e) => setExtension(e.target.checked)}
+              />
+              <span>
+                ⭐ Extension rules{" "}
+                <small className="hint">special objectives · 🆘 distress · 📡 comms blackouts</small>
+              </span>
+            </label>
+          ) : (
+            <span className="ext-label readonly">
+              ⭐ Extension rules: <strong>{room.extension ? "ON" : "OFF"}</strong>
+            </span>
+          )}
+        </div>
         <button className="btn link" onClick={() => setShowGuide(true)}>
           🗺️ Level guide
         </button>
@@ -152,6 +171,7 @@ export function Lobby() {
       {showGuide && (
         <LevelGuide
           currentLevel={room.level}
+          extension={room.extension}
           onClose={() => setShowGuide(false)}
           onPick={
             isHost

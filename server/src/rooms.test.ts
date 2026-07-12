@@ -145,7 +145,7 @@ describe("RoomManager", () => {
     expect(rm.setLevel(room.code, 4)).toEqual({ ok: true });
     expect(room.level).toBe(4);
     expect(rm.setLevel(room.code, 999)).toEqual({ ok: true });
-    expect(room.level).toBe(8); // clamped to MAX_LEVEL
+    expect(room.level).toBe(11); // clamped to MAX_LEVEL
     expect(rm.setLevel(room.code, -3)).toEqual({ ok: true });
     expect(room.level).toBe(0);
     rm.setLevel(room.code, 3);
@@ -270,5 +270,25 @@ describe("distress signal (extension)", () => {
 
     // Once per mission.
     expect(rm.distress(room.code, host.id, "left")).toHaveProperty("error");
+  });
+});
+
+describe("extension toggle", () => {
+  it("host can turn extension rules off in the lobby; classic missions result", () => {
+    const rm = new RoomManager(31);
+    const { room, player: host } = rm.createRoom("Host");
+    rm.addBot(room.code);
+    rm.addBot(room.code);
+    expect(rm.toRoomView(room).extension).toBe(true);
+    expect(rm.setExtension(room.code, false)).toEqual({ ok: true });
+    expect(rm.toRoomView(room).extension).toBe(false);
+
+    rm.startGame(room.code);
+    expect(room.game!.tasks.every((t) => t.objective.kind === "capture")).toBe(true);
+    expect(room.game!.comms).toBe("open");
+    // Distress is unavailable in classic mode.
+    expect(rm.distress(room.code, host.id, "left")).toHaveProperty("error");
+    // Cannot flip the toggle mid-game.
+    expect(rm.setExtension(room.code, true)).toHaveProperty("error");
   });
 });

@@ -35,6 +35,8 @@ function state(hands: Card[][], tasks: TaskState[] = []): GameState {
     sonarUsed: [false, false, false],
     comms: "open",
     distressUsed: false,
+    distressAllowed: true,
+    modifiers: [],
     expectedTrickSize: hands.filter((h) => h.length > 0).length,
   };
 }

@@ -1085,3 +1085,80 @@ missions — all without breaking the guaranteed-solvable deal generator or the 
   ordering AND comms* — are still always won by bot crews.
 - Root `npm test` → **128/128**; shared+server+client typechecks clean; client builds;
   webrtc-p2p typecheck + 9/9 tests clean.
+
+## Cycle 31 — Extension toggle + polish
+
+### Plan
+Let crews choose classic vs extension rules per room, and sweep up small UX debts found
+in review.
+
+### Develop
+- `MissionOptions { extension }` threaded through `buildMissionForLevel` and
+  `buildSolvableGameWithLine`; classic mode = captures only, comms "open", distress off
+  (`Mission.distressAllowed` → `GameState.distressAllowed` → `canStartDistress`).
+- Room setting `extension` (default on) + `room:setextension` host event (lobby only);
+  exposed on `RoomView`; mission generation honours it.
+- Lobby: ⭐ "Extension rules" checkbox for the host (read-only status for guests);
+  level notes and Level Guide adapt to the toggle.
+- Polish pass: fail reasons now use diver NAMES ("won by Alpha, but it belongs to
+  Bravo") instead of seat numbers; `distressPick` respects pause; the hint advisor
+  understands the extension (duck when your win-exactly quota is full, don't capture
+  your forbidden colour, bank safe tricks when short of quota, win-the-first-trick
+  guidance).
+
+### Check
+- New tests: classic-mode generators produce no objectives / open comms / no distress
+  (engine + rooms), host-only toggle, locked mid-game. Root `npm test` → **130/130**;
+  all typechecks + client build clean.
+- Live browser verification (preview): toggle round-trips through the server; classic
+  game showed 5 card tasks / no 🆘 / no comms note; extension game showed 🥇🎯 chips +
+  🆘; full distress pass (banner → tap card → hands passed → play resumed) worked.
+
+## Cycle 32 — Missions 10–12: deep complications (undertow + commander's burden)
+
+### Plan
+Extend the campaign past Mission 9 with genuinely NEW rules (option 2), not just bigger
+numbers: MAX_LEVEL 8 → 11, three new zones.
+
+### Develop
+- `MissionModifier` union in the engine: `undertow{everyN}` (every Nth trick the LOWEST
+  card of the led colour wins; submarines sink — they only compete when a sub was led)
+  and `commanderBan{tricks}` (commander must not win the first N tricks → instant fail).
+- `trickWinner(trick, undertow)` + `trickWinnerFor(state, trick, trickNo)` +
+  `isUndertowTrick`; the engine resolves every trick through the modifier-aware winner.
+- Levels: 9 "The Fracture" (undertow /4), 10 "Leviathan's Rest" (commander ban 3),
+  11 "The Void" (undertow /3 + ban). Modifiers are extension content (classic strips
+  them). `MAX_LEVEL = 11`.
+- Generator stays constructive: `simulateRawTricks` applies the same undertow winner
+  rule, and commander-ban deals are rejection-sampled (re-play up to 20×, re-deal up to
+  25×, drop-ban fallback) so the derived mission is always satisfied by its own line.
+- Bots/advisor judge tricks with the modifier-aware winner (`winsWith`); in undertow the
+  fast bot's "decisive" hold card is the LOWEST; advisor tells the commander to duck
+  banned tricks. View exposes `modifiers` / `undertowTrick` / `commanderBanActive`.
+- Client: live trick banners ("🌀 UNDERTOW — lowest card wins, subs sink!", "⚓ X must
+  NOT win this trick"), level-guide notes via `describeModifier`, How-to-play section.
+
+### Check
+- `modifiers.test.ts` (9 tests): undertow winner truth table (incl. subs sinking and
+  sub-led tricks), engine scheduling, commander-ban fail/pass, levels 9–11 constructive
+  lines win, seeded planner bots clear The Void, notes + classic stripping.
+- Root `npm test` → **139/139**; typechecks + client build + webrtc-p2p clean.
+- Live browser check: Level 12 "The Void" lobby notes list both complications; in-game
+  showed 8 tasks, dead sonar, and the ⚓ ban banner; view flags verified across a full
+  winning line (undertow on tricks 3/6, ban on 1–3).
+
+## Cycle 33 — Render deploy support (play online, any network)
+
+### Develop
+- `render.yaml` blueprint: free-plan Node web service, `npm install && npm run
+  build:client` build, `npm start -w @dsc/server` start, `/health` health check,
+  NODE_VERSION pinned.
+- `/api/lan` is now cloud-aware: behind Render (RENDER/RENDER_EXTERNAL_URL) or with
+  PUBLIC_BASE_URL set it returns the public HTTPS origin instead of a LAN IP, so lobby
+  invite links + QR codes work online; `trust proxy` enabled for correct protocol.
+  Local LAN behaviour unchanged. Root `engines.node >= 22`.
+
+### Check
+- Simulated Render env locally (RENDER + RENDER_EXTERNAL_URL + PORT): `/api/lan` →
+  `{"baseUrl":"https://deep-sea-crew.onrender.com"}`, `/health` ok; plain local run
+  still returns the Wi-Fi address. 139/139 tests.

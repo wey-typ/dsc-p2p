@@ -1,7 +1,7 @@
 import type { Card } from "./types.js";
 import { isTrump, cardsEqual } from "./cards.js";
 import { trickWinner } from "./trick.js";
-import type { TaskState } from "./tasks.js";
+import { describeObjective, type TaskState } from "./tasks.js";
 import type { PlayerView } from "./view.js";
 
 export interface Suggestion {
@@ -77,7 +77,19 @@ export function suggestPlay(view: PlayerView): Suggestion {
   const seat = view.youSeat;
   const nameOf = (s: number) => view.players[s]?.name ?? `Seat ${s + 1}`;
   const winsWith = (card: Card) =>
-    trickWinner({ ...view.trick, plays: [...view.trick.plays, { seat, card }] }) === seat;
+    trickWinner({ ...view.trick, plays: [...view.trick.plays, { seat, card }] }, view.undertowTrick) === seat;
+
+  // Commander's burden: the commander must duck the early tricks entirely.
+  if (view.commanderBanActive && seat === view.commander && view.trick.plays.length > 0) {
+    const losing = moves.filter((c) => !winsWith(c));
+    if (losing.length > 0) {
+      const card = cheapest(losing, view);
+      return {
+        card,
+        reason: `Commander's burden — YOU must not win this trick. Duck with ${cardName(card)}.`,
+      };
+    }
+  }
 
   // Extension objective: someone must win THIS trick number (usually the first).
   const mustWinTrick = view.tasks.find(
@@ -146,6 +158,64 @@ export function suggestPlay(view: PlayerView): Suggestion {
       card,
       reason: `Your task here isn't due yet (it must be completed in order). Avoid winning now — duck with ${cardName(card)}.`,
     };
+  }
+
+  // Extension objectives that shape ordinary tricks (no task card on the table).
+  if (inTrick.length === 0 && view.trick.plays.length > 0) {
+    // Full quota: winning ANY further trick fails "win exactly N" instantly.
+    const quotaFull = view.tasks.find(
+      (t) =>
+        t.status === "pending" &&
+        t.objective.kind === "winExactly" &&
+        t.owner === seat &&
+        (view.tricksWon[seat] ?? 0) >= t.objective.count
+    );
+    if (quotaFull) {
+      const losing = moves.filter((c) => !winsWith(c));
+      if (losing.length > 0) {
+        const card = cheapest(losing, view);
+        return {
+          card,
+          reason: `Your quota is FULL (${describeObjective(quotaFull.objective).toLowerCase()}) — winning another trick fails the mission. Duck with ${cardName(card)}.`,
+        };
+      }
+    }
+    // Forbidden colour on the table: don't take it home.
+    const avoid = view.tasks.find(
+      (t) =>
+        t.status === "pending" &&
+        t.objective.kind === "avoidColor" &&
+        t.owner === seat &&
+        view.trick.plays.some((p) => t.objective.kind === "avoidColor" && p.card.suit === t.objective.suit)
+    );
+    if (avoid && avoid.objective.kind === "avoidColor") {
+      const losing = moves.filter((c) => !winsWith(c));
+      if (losing.length > 0) {
+        const card = cheapest(losing, view);
+        return {
+          card,
+          reason: `This trick holds a ${SUIT_NAME[avoid.objective.suit]} card you must NOT capture — duck with ${cardName(card)}.`,
+        };
+      }
+    }
+    // Short of quota: bank a trick toward "win exactly N" while it's safe (no task cards here).
+    const quotaShort = view.tasks.find(
+      (t) =>
+        t.status === "pending" &&
+        t.objective.kind === "winExactly" &&
+        t.owner === seat &&
+        (view.tricksWon[seat] ?? 0) < t.objective.count
+    );
+    if (quotaShort && !avoid) {
+      const winning = moves.filter(winsWith);
+      if (winning.length > 0) {
+        const card = cheapest(winning, view);
+        return {
+          card,
+          reason: `You still need tricks for your quota (${describeObjective(quotaShort.objective).toLowerCase()}) — take this safe one with ${cardName(card)}.`,
+        };
+      }
+    }
   }
 
   const leading = view.trick.plays.length === 0;

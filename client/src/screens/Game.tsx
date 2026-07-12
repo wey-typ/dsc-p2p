@@ -237,6 +237,12 @@ export function Game() {
       <div className="trick-area">
         <div className="section-label">
           Trick {view.trickNumber + (view.phase === "playing" ? 1 : 0)}
+          {view.undertowTrick && view.phase === "playing" && (
+            <span className="modifier-note undertow"> · 🌀 UNDERTOW — lowest card wins, subs sink!</span>
+          )}
+          {view.commanderBanActive && view.phase === "playing" && (
+            <span className="modifier-note"> · ⚓ {nameOf(view.commander)} must NOT win this trick</span>
+          )}
         </div>
         <div className="trick">
           {view.trick.plays.length === 0 && <div className="trick-empty">No cards played yet</div>}
