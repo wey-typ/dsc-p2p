@@ -1192,3 +1192,18 @@ misclick from killing a mission, and the game page had no invite/QR.
 - Live mobile-viewport (375×812) verification: complication chips render at level 12,
   control bar stays in view when scrolled to the hand, gear visible, End arms then
   auto-disarms without ending, ▣ chip opens the QR with the correct join URL.
+
+## Cycle 35 — P2P app parity: sticky host bar, two-step end confirm, level cap
+
+### Develop
+- `webrtc-p2p` HostBar is now position:sticky (blurred backdrop) so Invite/Reconnect and
+  the new in-game "■ End" stay reachable while scrolled on phones.
+- "■ End" (host, during play, ends to lobby via restart) uses the same two-step confirm
+  as the LAN client: arm → "⚠ Confirm end?", auto-disarm after 3.5s.
+- Lobby level "+" cap was hardcoded to 8 — now MAX_LEVEL, so the PWA can select
+  Missions 10–12 (The Fracture / Leviathan's Rest / The Void).
+
+### Check
+- Live mobile-viewport run of the PWA dev build: host bar stays visible scrolled to the
+  hand; End arms, auto-disarms, and a second tap returns to the lobby; level picker
+  reaches Level 12. p2p typecheck + 9/9 tests + PWA build clean.
