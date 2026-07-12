@@ -34,6 +34,28 @@ export type GamePhase = "playing" | "won" | "lost";
 export type CommsMode = "open" | "delayed" | "silent";
 
 /**
+ * Deep-mission complications (Missions 10+). Enforced by the engine:
+ * - undertow:     every `everyN`-th trick is won by the LOWEST card of the led colour,
+ *                 and submarines sink (never win it).
+ * - commanderBan: the commander must not win any of the first `tricks` tricks.
+ */
+export type MissionModifier =
+  | { kind: "undertow"; everyN: number }
+  | { kind: "commanderBan"; tricks: number };
+
+/** Short human-readable description of a modifier (shared by the UIs). */
+export function describeModifier(m: MissionModifier): string {
+  switch (m.kind) {
+    case "undertow": {
+      const ord = m.everyN === 2 ? "2nd" : m.everyN === 3 ? "3rd" : `${m.everyN}th`;
+      return `🌀 Undertow: every ${ord} trick, the LOWEST card wins (subs sink)`;
+    }
+    case "commanderBan":
+      return `⚓ Commander's burden: the commander must not win the first ${m.tricks} tricks`;
+  }
+}
+
+/**
  * Distress-signal sub-state: before the first card of the mission is played, the crew
  * may fire the distress signal — every diver passes ONE card (never a submarine) to the
  * neighbour in `direction`. Play is blocked until every seat has picked.
@@ -53,6 +75,8 @@ export interface Mission {
   readonly comms?: CommsMode;
   /** Whether the distress signal may be used this mission (default true). */
   readonly distressAllowed?: boolean;
+  /** Deep-mission complications in force (default none). */
+  readonly modifiers?: readonly MissionModifier[];
 }
 
 /** Full game state. Hands are private per seat; the server filters before sending. */
@@ -86,6 +110,8 @@ export interface GameState {
   distressUsed: boolean;
   /** Whether the distress signal is available at all (extension rules on/off). */
   distressAllowed: boolean;
+  /** Deep-mission complications in force this mission. */
+  modifiers: MissionModifier[];
   /**
    * How many cards the current trick will hold = seats that had cards when the trick
    * began. Lets the final tricks of an uneven (3-player) deal resolve with fewer cards.
@@ -156,6 +182,7 @@ export function makeGameState(
     comms: mission.comms ?? "open",
     distressUsed: false,
     distressAllowed: mission.distressAllowed ?? true,
+    modifiers: (mission.modifiers ?? []).slice(),
     expectedTrickSize: countSeatsWithCards(hands),
   };
 }
@@ -314,9 +341,20 @@ export function playCard(state: GameState, seat: number, card: Card): GameState 
   return resolveCompletedTrick(next);
 }
 
+/** Whether trick number `trickNo` (1-based) is an undertow trick this mission. */
+export function isUndertowTrick(state: GameState, trickNo: number): boolean {
+  const u = state.modifiers.find((m) => m.kind === "undertow");
+  return u?.kind === "undertow" && trickNo % u.everyN === 0;
+}
+
+/** Winner of `trick` under this mission's rules if it resolved as trick `trickNo`. */
+export function trickWinnerFor(state: GameState, trick: Trick, trickNo: number): number {
+  return trickWinner(trick, isUndertowTrick(state, trickNo));
+}
+
 function resolveCompletedTrick(state: GameState): GameState {
-  const winner = trickWinner(state.trick);
   const trickNo = state.trickNumber + 1;
+  const winner = trickWinnerFor(state, state.trick, trickNo);
   const cardsInTrick = state.trick.plays.map((p) => p.card);
 
   // Remember the completed trick so the UI can show it after the table is cleared,
@@ -341,6 +379,15 @@ function resolveCompletedTrick(state: GameState): GameState {
   );
 
   const seatName = (s: number) => state.players[s]?.name ?? `seat ${s}`;
+
+  // Commander's burden: the commander must stay out of the early tricks.
+  const ban = state.modifiers.find((m) => m.kind === "commanderBan");
+  if (ban?.kind === "commanderBan" && trickNo <= ban.tricks && winner === state.commander) {
+    return fail(
+      state,
+      `Complication failed: Commander ${seatName(state.commander)} won trick #${trickNo}, but must not win the first ${ban.tricks}.`
+    );
+  }
 
   // Wrong player won a required card -> instant fail.
   const wrong = resolving.find((t) => t.owner !== winner);

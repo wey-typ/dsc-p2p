@@ -1113,3 +1113,36 @@ in review.
 - Live browser verification (preview): toggle round-trips through the server; classic
   game showed 5 card tasks / no 🆘 / no comms note; extension game showed 🥇🎯 chips +
   🆘; full distress pass (banner → tap card → hands passed → play resumed) worked.
+
+## Cycle 32 — Missions 10–12: deep complications (undertow + commander's burden)
+
+### Plan
+Extend the campaign past Mission 9 with genuinely NEW rules (option 2), not just bigger
+numbers: MAX_LEVEL 8 → 11, three new zones.
+
+### Develop
+- `MissionModifier` union in the engine: `undertow{everyN}` (every Nth trick the LOWEST
+  card of the led colour wins; submarines sink — they only compete when a sub was led)
+  and `commanderBan{tricks}` (commander must not win the first N tricks → instant fail).
+- `trickWinner(trick, undertow)` + `trickWinnerFor(state, trick, trickNo)` +
+  `isUndertowTrick`; the engine resolves every trick through the modifier-aware winner.
+- Levels: 9 "The Fracture" (undertow /4), 10 "Leviathan's Rest" (commander ban 3),
+  11 "The Void" (undertow /3 + ban). Modifiers are extension content (classic strips
+  them). `MAX_LEVEL = 11`.
+- Generator stays constructive: `simulateRawTricks` applies the same undertow winner
+  rule, and commander-ban deals are rejection-sampled (re-play up to 20×, re-deal up to
+  25×, drop-ban fallback) so the derived mission is always satisfied by its own line.
+- Bots/advisor judge tricks with the modifier-aware winner (`winsWith`); in undertow the
+  fast bot's "decisive" hold card is the LOWEST; advisor tells the commander to duck
+  banned tricks. View exposes `modifiers` / `undertowTrick` / `commanderBanActive`.
+- Client: live trick banners ("🌀 UNDERTOW — lowest card wins, subs sink!", "⚓ X must
+  NOT win this trick"), level-guide notes via `describeModifier`, How-to-play section.
+
+### Check
+- `modifiers.test.ts` (9 tests): undertow winner truth table (incl. subs sinking and
+  sub-led tricks), engine scheduling, commander-ban fail/pass, levels 9–11 constructive
+  lines win, seeded planner bots clear The Void, notes + classic stripping.
+- Root `npm test` → **139/139**; typechecks + client build + webrtc-p2p clean.
+- Live browser check: Level 12 "The Void" lobby notes list both complications; in-game
+  showed 8 tasks, dead sonar, and the ⚓ ban banner; view flags verified across a full
+  winning line (undertow on tricks 3/6, ban on 1–3).

@@ -5,10 +5,12 @@ import {
   type GamePhase,
   type Communication,
   type CommsMode,
+  type MissionModifier,
   legalMovesFor,
   canCommunicate,
   canStartDistress,
   communicateBlockedReason,
+  isUndertowTrick,
 } from "./game.js";
 import { sortHand } from "./cards.js";
 
@@ -74,6 +76,12 @@ export interface PlayerView {
   readonly distress: DistressView | null;
   /** Whether the distress signal can still be fired (before the first card). */
   readonly canDistress: boolean;
+  /** Deep-mission complications in force this mission. */
+  readonly modifiers: MissionModifier[];
+  /** Whether the CURRENT trick is an undertow trick (lowest card wins, subs sink). */
+  readonly undertowTrick: boolean;
+  /** Whether the commander ban still applies to the current trick. */
+  readonly commanderBanActive: boolean;
 }
 
 /** Project the full game state down to what `seat` is allowed to see. */
@@ -117,5 +125,10 @@ export function projectForSeat(state: GameState, seat: number): PlayerView {
         }
       : null,
     canDistress: canStartDistress(state),
+    modifiers: state.modifiers,
+    undertowTrick: isUndertowTrick(state, state.trickNumber + 1),
+    commanderBanActive: state.modifiers.some(
+      (m) => m.kind === "commanderBan" && state.trickNumber < m.tricks
+    ),
   };
 }

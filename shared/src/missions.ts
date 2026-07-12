@@ -1,5 +1,5 @@
 import { type Card, COLOR_SUITS, MAX_COLOR_VALUE } from "./types.js";
-import type { CommsMode, Mission } from "./game.js";
+import { describeModifier, type CommsMode, type Mission, type MissionModifier } from "./game.js";
 import type { MissionTask, TaskObjective } from "./tasks.js";
 import { shuffle } from "./rng.js";
 
@@ -67,6 +67,24 @@ export function commsForLevel(level: number): CommsMode {
   return "open";
 }
 
+/**
+ * Deep-mission complications by level (Missions 10+ bring genuinely new rules):
+ *  - 9  (Mission 10): undertow every 4th trick.
+ *  - 10 (Mission 11): commander must not win the first 3 tricks.
+ *  - 11+ (Mission 12): both, with undertow every 3rd trick.
+ */
+export function modifiersForLevel(level: number): MissionModifier[] {
+  if (level >= 11) {
+    return [
+      { kind: "undertow", everyN: 3 },
+      { kind: "commanderBan", tricks: 3 },
+    ];
+  }
+  if (level === 10) return [{ kind: "commanderBan", tricks: 3 }];
+  if (level === 9) return [{ kind: "undertow", everyN: 4 }];
+  return [];
+}
+
 /** A short flavour name for the mission at a given level. */
 export function missionName(level: number): string {
   const names = [
@@ -79,6 +97,9 @@ export function missionName(level: number): string {
     "Midnight Zone",
     "The Abyssal Plain",
     "Hadal Depths",
+    "The Fracture",
+    "Leviathan's Rest",
+    "The Void",
   ];
   return names[Math.min(level, names.length - 1)]!;
 }
@@ -92,6 +113,7 @@ export function missionNotes(level: number, extension = true): string[] {
   if (extension && level >= 5 && level < 7) notes.push("Sonar interference: signals only after the first two tricks.");
   if (level >= 6) notes.push("The ① task must be the very first completed.");
   if (extension && level >= 7) notes.push("Sonar is DEAD: no signals this mission.");
+  if (extension) for (const m of modifiersForLevel(level)) notes.push(describeModifier(m) + ".");
   if (notes.length === 0) notes.push("Complete the tasks in any order.");
   return notes;
 }
@@ -173,5 +195,6 @@ export function buildMissionForLevel(
     tasks,
     comms: extension ? commsForLevel(level) : "open",
     distressAllowed: extension,
+    modifiers: extension ? modifiersForLevel(level) : [],
   };
 }

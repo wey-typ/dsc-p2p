@@ -1,13 +1,14 @@
 import { type Card, type ColorSuit, type Player, COLOR_SUITS } from "./types.js";
 import { deal } from "./cards.js";
 import { legalMoves, trickWinner } from "./trick.js";
-import { type Mission, type GameState, makeGameState } from "./game.js";
+import { type Mission, type GameState, type MissionModifier, makeGameState } from "./game.js";
 import { type MissionTask, type TaskObjective } from "./tasks.js";
 import {
   missionTaskCount,
   missionName,
   objectiveCountForLevel,
   commsForLevel,
+  modifiersForLevel,
   type MissionOptions,
 } from "./missions.js";
 
@@ -30,8 +31,23 @@ interface PlannedPlay {
   trickIndex: number;
 }
 
-/** Play out a full random-but-legal game (no tasks) to learn who wins each card, in order. */
-function simulateRawTricks(hands: Card[][], commander: number, rng: () => number): PlannedPlay[] {
+/** Whether trick `trickIndex` (0-based) is an undertow trick under `modifiers`. */
+function undertowAt(modifiers: readonly MissionModifier[], trickIndex: number): boolean {
+  const u = modifiers.find((m) => m.kind === "undertow");
+  return u?.kind === "undertow" && (trickIndex + 1) % u.everyN === 0;
+}
+
+/**
+ * Play out a full random-but-legal game (no tasks) to learn who wins each card, in order.
+ * Uses the SAME winner rules the live engine will apply (incl. undertow tricks), so
+ * everything derived from this playthrough stays consistent with actual play.
+ */
+function simulateRawTricks(
+  hands: Card[][],
+  commander: number,
+  rng: () => number,
+  modifiers: readonly MissionModifier[] = []
+): PlannedPlay[] {
   const work = hands.map((h) => h.slice());
   const plan: PlannedPlay[] = [];
   let leader = commander;
@@ -48,12 +64,31 @@ function simulateRawTricks(hands: Card[][], commander: number, rng: () => number
       plays.push({ seat: turn, card });
       turn = nextWithCards(work, turn);
     }
-    const winner = trickWinner({ leader, plays });
+    const winner = trickWinner({ leader, plays }, undertowAt(modifiers, trickIndex));
     for (const p of plays) plan.push({ card: p.card, winner, trickIndex });
     leader = (work[winner]?.length ?? 0) > 0 ? winner : nextWithCards(work, winner);
     trickIndex++;
   }
   return plan;
+}
+
+/** Does this playthrough respect a commander-ban modifier (if present)? */
+function respectsCommanderBan(
+  plan: PlannedPlay[],
+  commander: number,
+  modifiers: readonly MissionModifier[]
+): boolean {
+  const ban = modifiers.find((m) => m.kind === "commanderBan");
+  if (ban?.kind !== "commanderBan") return true;
+  const seen = new Set<number>();
+  for (const p of plan) {
+    if (p.trickIndex >= ban.tricks) break;
+    if (!seen.has(p.trickIndex)) {
+      seen.add(p.trickIndex);
+      if (p.winner === commander) return false;
+    }
+  }
+  return true;
 }
 
 /** A solvable game plus a known winning line of cards (the playthrough it was derived from). */
@@ -149,8 +184,29 @@ export function buildSolvableGameWithLine(
 ): SolvableGame {
   const extension = opts.extension !== false;
   const n = players.length;
-  const { hands, commander } = deal(n, rng);
-  const plan = simulateRawTricks(hands, commander, rng);
+  let modifiers = extension ? modifiersForLevel(level) : [];
+
+  // Deal + play until the playthrough respects the commander ban (rejection sampling —
+  // almost always immediate; re-deal occasionally; drop the ban as a last-ditch fallback
+  // so we never emit a mission its own construction line would fail).
+  let hands: Card[][];
+  let commander: number;
+  let plan: PlannedPlay[];
+  for (let attempt = 0; ; attempt++) {
+    ({ hands, commander } = deal(n, rng));
+    let ok = false;
+    for (let retry = 0; retry < 20 && !ok; retry++) {
+      plan = simulateRawTricks(hands, commander, rng, modifiers);
+      ok = respectsCommanderBan(plan, commander, modifiers);
+    }
+    if (ok) break;
+    if (attempt >= 25) {
+      modifiers = modifiers.filter((m) => m.kind !== "commanderBan");
+      plan = simulateRawTricks(hands, commander, rng, modifiers);
+      break;
+    }
+  }
+  plan = plan!;
 
   // Candidate tricks: those containing at least one colour card (valid task targets).
   const byTrick = new Map<number, { winner: number; colourCards: Card[] }>();
@@ -209,6 +265,7 @@ export function buildSolvableGameWithLine(
     tasks,
     comms: extension ? commsForLevel(level) : "open",
     distressAllowed: extension,
+    modifiers,
   };
   return {
     state: makeGameState(players, hands, commander, mission),

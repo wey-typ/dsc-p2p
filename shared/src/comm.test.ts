@@ -36,6 +36,7 @@ function state(hands: Card[][], tasks: TaskState[] = []): GameState {
     comms: "open",
     distressUsed: false,
     distressAllowed: true,
+    modifiers: [],
     expectedTrickSize: hands.filter((h) => h.length > 0).length,
   };
 }

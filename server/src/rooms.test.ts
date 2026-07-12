@@ -145,7 +145,7 @@ describe("RoomManager", () => {
     expect(rm.setLevel(room.code, 4)).toEqual({ ok: true });
     expect(room.level).toBe(4);
     expect(rm.setLevel(room.code, 999)).toEqual({ ok: true });
-    expect(room.level).toBe(8); // clamped to MAX_LEVEL
+    expect(room.level).toBe(11); // clamped to MAX_LEVEL
     expect(rm.setLevel(room.code, -3)).toEqual({ ok: true });
     expect(room.level).toBe(0);
     rm.setLevel(room.code, 3);

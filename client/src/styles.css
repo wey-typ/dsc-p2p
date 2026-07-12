@@ -296,6 +296,8 @@ button { font-family: inherit; }
 .task-obj-emoji { font-size: 1.3rem; line-height: 1; }
 .task-obj-text { font-size: 0.6rem; line-height: 1.25; color: var(--foam); font-weight: 700; }
 .comms-note { color: var(--gold); font-weight: 700; }
+.modifier-note { color: var(--gold); font-weight: 700; }
+.modifier-note.undertow { color: #7fd8f7; }
 
 /* Extension rules toggle (lobby) */
 .ext-toggle { margin: 6px 0 2px; display: flex; justify-content: center; }

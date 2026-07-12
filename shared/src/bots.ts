@@ -1,8 +1,7 @@
 import type { Card } from "./types.js";
 import type { TaskState } from "./tasks.js";
 import { isTrump, cardsEqual } from "./cards.js";
-import { trickWinner } from "./trick.js";
-import { type GameState, legalMovesFor, playCard } from "./game.js";
+import { type GameState, legalMovesFor, playCard, trickWinnerFor, isUndertowTrick } from "./game.js";
 
 /**
  * Tunable weights for the bot's *soft* tie-breaking. Hard safety rules (don't complete a
@@ -73,9 +72,10 @@ export function chooseBotPlayFast(
   if (moves.length <= 1) return moves[0]!;
 
   const trick = state.trick;
+  const undertow = isUndertowTrick(state, state.trickNumber + 1);
   const winsWith = (card: Card): boolean => {
     const hypothetical = { ...trick, plays: [...trick.plays, { seat, card }] };
-    return trickWinner(hypothetical) === seat;
+    return trickWinnerFor(state, hypothetical, state.trickNumber + 1) === seat;
   };
 
   // Pending capture tasks whose card is already on the table this trick.
@@ -91,11 +91,13 @@ export function chooseBotPlayFast(
     if (safeToWin) {
       const winning = moves.filter(winsWith);
       if (winning.length > 0) {
-        // If we're the last to play, win cheaply. Otherwise win *decisively* (strongest
-        // card) so a later player can't over-trump and steal our task card.
+        // If we're the last to play, win cheaply. Otherwise win *decisively* so a later
+        // player can't steal our task card — normally the strongest card; in an undertow
+        // trick the most secure winner is the LOWEST (harder to undercut).
         const isLast = trick.plays.length + 1 >= state.expectedTrickSize;
-        return isLast
-          ? cheapest(winning, state, weights, /*winning*/ true)
+        if (isLast) return cheapest(winning, state, weights, /*winning*/ true);
+        return undertow
+          ? winning.slice().sort((a, b) => a.value - b.value)[0]!
           : strongest(winning);
       }
       return cheapest(moves, state, weights);

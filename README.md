@@ -69,6 +69,10 @@ Tap **How to play** on the home screen for the in-app rules + suit legend.
   add **comms complications**: sonar delayed until after trick 2 (L6–7) or dead (L8+).
 - **Distress signal** (🆘, host, once per mission, before the first card): every diver
   passes one card (never a submarine) left or right — a rescue for hopeless deals.
+- **Deep complications** (Missions 10–12): 🌀 *Undertow* — on marked tricks the LOWEST
+  card of the led colour wins and submarines sink; ⚓ *Commander's burden* — the
+  commander must not win any of the first 3 tricks. Mission 12 "The Void" has both.
+  The campaign now spans **12 named missions**.
 - **Controls** (host): Pause / Resume / End, plus Next-mission or Retry after each game.
 - **Progress** saves per crew name; missions get harder each level. **Leaderboard** ranks
   crews by missions cleared.

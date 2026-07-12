@@ -77,7 +77,19 @@ export function suggestPlay(view: PlayerView): Suggestion {
   const seat = view.youSeat;
   const nameOf = (s: number) => view.players[s]?.name ?? `Seat ${s + 1}`;
   const winsWith = (card: Card) =>
-    trickWinner({ ...view.trick, plays: [...view.trick.plays, { seat, card }] }) === seat;
+    trickWinner({ ...view.trick, plays: [...view.trick.plays, { seat, card }] }, view.undertowTrick) === seat;
+
+  // Commander's burden: the commander must duck the early tricks entirely.
+  if (view.commanderBanActive && seat === view.commander && view.trick.plays.length > 0) {
+    const losing = moves.filter((c) => !winsWith(c));
+    if (losing.length > 0) {
+      const card = cheapest(losing, view);
+      return {
+        card,
+        reason: `Commander's burden — YOU must not win this trick. Duck with ${cardName(card)}.`,
+      };
+    }
+  }
 
   // Extension objective: someone must win THIS trick number (usually the first).
   const mustWinTrick = view.tasks.find(

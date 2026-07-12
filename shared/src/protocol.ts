@@ -86,8 +86,8 @@ export interface SetExtensionPayload {
   extension: boolean;
 }
 
-/** Highest selectable named level (0-based). 9 named missions: levels 0..8. */
-export const MAX_LEVEL = 8;
+/** Highest selectable named level (0-based). 12 named missions: levels 0..11. */
+export const MAX_LEVEL = 11;
 export interface PlayPayload {
   card: Card;
 }

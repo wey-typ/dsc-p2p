@@ -45,6 +45,7 @@ function makeState(hands: Card[][], tasks: TaskState[], opts?: Partial<GameState
     comms: "open",
     distressUsed: false,
     distressAllowed: true,
+    modifiers: [],
     expectedTrickSize: hands.filter((h) => h.length > 0).length,
     ...opts,
   };
