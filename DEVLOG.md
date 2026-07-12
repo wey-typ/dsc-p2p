@@ -1146,3 +1146,19 @@ numbers: MAX_LEVEL 8 → 11, three new zones.
 - Live browser check: Level 12 "The Void" lobby notes list both complications; in-game
   showed 8 tasks, dead sonar, and the ⚓ ban banner; view flags verified across a full
   winning line (undertow on tricks 3/6, ban on 1–3).
+
+## Cycle 33 — Render deploy support (play online, any network)
+
+### Develop
+- `render.yaml` blueprint: free-plan Node web service, `npm install && npm run
+  build:client` build, `npm start -w @dsc/server` start, `/health` health check,
+  NODE_VERSION pinned.
+- `/api/lan` is now cloud-aware: behind Render (RENDER/RENDER_EXTERNAL_URL) or with
+  PUBLIC_BASE_URL set it returns the public HTTPS origin instead of a LAN IP, so lobby
+  invite links + QR codes work online; `trust proxy` enabled for correct protocol.
+  Local LAN behaviour unchanged. Root `engines.node >= 22`.
+
+### Check
+- Simulated Render env locally (RENDER + RENDER_EXTERNAL_URL + PORT): `/api/lan` →
+  `{"baseUrl":"https://deep-sea-crew.onrender.com"}`, `/health` ok; plain local run
+  still returns the Wi-Fi address. 139/139 tests.

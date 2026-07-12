@@ -1,0 +1,19 @@
+# Render Blueprint — deploys the full LAN-server version of Deep Sea Crew as a
+# public web service (free plan). Create via Render dashboard: New + → Blueprint →
+# select this repo. The game is then live at https://<service-name>.onrender.com.
+#
+# Free-plan notes:
+# - The service sleeps after ~15 min idle; the next visitor waits ~1 min while it wakes.
+# - The filesystem is ephemeral: campaign/leaderboard/history JSON files reset when the
+#   service sleeps or redeploys. Games themselves are unaffected.
+services:
+  - type: web
+    name: deep-sea-crew
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build:client
+    startCommand: npm start -w @dsc/server
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22.12.0"

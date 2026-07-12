@@ -52,6 +52,16 @@ right-click the app → **Open** once.)
 
 Tap **How to play** on the home screen for the in-app rules + suit legend.
 
+## Play online (Render — free, no same-Wi-Fi needed)
+The repo ships a [`render.yaml`](./render.yaml) blueprint. In the Render dashboard:
+**New + → Blueprint → connect this repo → Apply.** Render builds the client, starts the
+server, and gives you a permanent free URL like `https://deep-sea-crew.onrender.com` —
+share it with anyone, anywhere; no domain needed. Free-plan trade-offs: the service
+sleeps after ~15 min idle (first visitor waits ~1 min while it wakes) and the filesystem
+is ephemeral, so campaign/leaderboard progress resets when it sleeps or redeploys.
+`/api/lan` automatically returns the public URL in the cloud (set `PUBLIC_BASE_URL` to
+override on other hosts), so invite links and QR codes work unchanged.
+
 ## Gameplay summary
 - 40 cards: 4 colours ×1–9 (Current/Kelp/Coral/Sand) + 4 Submarines (1–4, trump).
 - Each trick: follow the led colour if you can; highest Sub wins, else highest of the led
