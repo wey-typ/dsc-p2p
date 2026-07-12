@@ -45,11 +45,12 @@ function constraintLabel(t: TaskState): string | null {
 const sameCard = (a: Card, b: Card) => a.suit === b.suit && a.value === b.value;
 
 export function Board({
-  view, room, isHost, onPlay, onCommunicate, onRestart, onStart,
+  view, room, isHost, showTricks = true, onPlay, onCommunicate, onRestart, onStart,
 }: {
   view: PlayerView | null;
   room: P2PRoom;
   isHost: boolean;
+  showTricks?: boolean;
   onPlay: (c: Card) => void;
   onCommunicate: (c: Card) => void;
   onRestart: () => void;
@@ -78,7 +79,11 @@ export function Board({
         {view.players.map((p) => (
           <div key={p.seat} className={`pchip ${view.turn === p.seat ? "active" : ""} ${p.seat === view.youSeat ? "me" : ""}`}>
             <span className="pn">{p.name}</span>
-            <span className="pm">{p.seat === view.commander ? "⚓ " : ""}{view.handCounts[p.seat]} cards</span>
+            <span className="pm">
+              {p.seat === view.commander ? "⚓ " : ""}
+              {view.handCounts[p.seat]} cards
+              {showTricks ? ` · 🏆${view.tricksWon[p.seat] ?? 0}` : ""}
+            </span>
             {signalFor(p.seat) && <span className="psig">{SUIT[signalFor(p.seat)!.card.suit].glyph}{signalFor(p.seat)!.card.value} · {signalFor(p.seat)!.position}</span>}
           </div>
         ))}

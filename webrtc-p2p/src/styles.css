@@ -85,7 +85,7 @@ details { display:flex; flex-direction:column; gap:8px; }
 .scanner { max-width:420px; }
 .scan-video { width:100%; max-height:60vh; border-radius:12px; background:#000; object-fit:cover; }
 .hostbar {
-  max-width:720px; margin:0 auto; padding:10px 16px 8px;
+  max-width:720px; margin:0 auto; padding:10px 52px 8px 16px;
   display:flex; align-items:center; gap:8px; justify-content:space-between; flex-wrap:wrap;
   /* Stay reachable on phones: stick to the top while the game scrolls. */
   position:sticky; top:0; z-index:8;
@@ -94,6 +94,26 @@ details { display:flex; flex-direction:column; gap:8px; }
 }
 .hb-actions { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
 .hh-actions { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+
+/* Settings gear + overlay */
+.settings-gear {
+  position:fixed; top:max(8px, env(safe-area-inset-top)); right:10px; z-index:10;
+  width:38px; height:38px; border-radius:50%; border:1px solid rgba(169,205,217,.3);
+  background:rgba(8,43,58,.7); color:var(--foam); font-size:1.1rem; cursor:pointer;
+}
+.setting-row { display:flex; align-items:center; gap:12px; justify-content:space-between; margin:10px 0; text-align:left; }
+.setting-text strong { display:block; }
+.toggle { flex:0 0 auto; width:52px; height:30px; border-radius:999px; border:none; background:rgba(233,246,251,.18); position:relative; cursor:pointer; transition:background .15s ease; }
+.toggle.on { background:var(--ok); }
+.toggle .knob { position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%; background:#fff; transition:left .15s ease; }
+.toggle.on .knob { left:25px; }
+
+/* Lobby extras */
+.lobby-top { display:flex; justify-content:flex-start; }
+.level-select {
+  width:100%; padding:12px 14px; border-radius:10px; font-size:1rem; font-weight:700;
+  background:rgba(4,20,31,.6); color:var(--foam); border:1px solid rgba(169,205,217,.3);
+}
 .btn.chip.gold { background:rgba(242,193,78,.18); border-color:var(--gold); color:var(--gold); }
 .hintbar { background:rgba(242,193,78,.14); border:1px solid rgba(242,193,78,.45); border-radius:12px; padding:10px 12px; font-size:.85rem; line-height:1.45; cursor:pointer; }
 .version { text-align:center; font-size:.7rem; color:rgba(169,205,217,.55); margin:4px 0 8px; display:flex; flex-direction:column; align-items:center; gap:2px; }
